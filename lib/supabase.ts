@@ -9,6 +9,8 @@ type SupabaseClient = ReturnType<typeof createClient>
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Use the site URL from environment or fallback to localhost for development
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
 
 // For server components
 export const createServerSupabaseClient = (cookieStore?: any) => {
@@ -23,6 +25,9 @@ export const createServerSupabaseClient = (cookieStore?: any) => {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        flowType: "pkce",
+        // Use the site URL from environment
+        redirectTo: `${siteUrl}/auth/confirm`,
       },
     })
   }
@@ -31,6 +36,9 @@ export const createServerSupabaseClient = (cookieStore?: any) => {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      flowType: "pkce",
+      // Use the site URL from environment
+      redirectTo: `${siteUrl}/auth/confirm`,
     },
   })
 }
@@ -46,6 +54,9 @@ export const createClientSupabaseClient = () => {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      flowType: "pkce",
+      // Use the site URL from environment
+      redirectTo: `${siteUrl}/auth/confirm`,
     },
   })
   return clientSupabaseClient
