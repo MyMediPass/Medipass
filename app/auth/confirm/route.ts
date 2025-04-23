@@ -9,7 +9,12 @@ export async function GET(request: NextRequest) {
 
   // If there's no token or it's not a signup confirmation, redirect to home
   if (!token || type !== "signup") {
-    return NextResponse.redirect(new URL("/", request.url))
+    return NextResponse.redirect(
+      new URL(
+        `/auth/confirmation?status=error&message=${encodeURIComponent("Invalid confirmation link")}`,
+        request.url,
+      ),
+    )
   }
 
   try {
@@ -23,20 +28,29 @@ export async function GET(request: NextRequest) {
     })
 
     if (error) {
-      // If there's an error, redirect to an error page or login with error param
+      // If there's an error, redirect to the confirmation page with error status
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent("Email verification failed")}`, request.url),
+        new URL(
+          `/auth/confirmation?status=error&message=${encodeURIComponent(error.message || "Email verification failed")}`,
+          request.url,
+        ),
       )
     }
 
-    // If successful, redirect to login with success message
+    // If successful, redirect to the confirmation page with success status
     return NextResponse.redirect(
-      new URL("/login?message=Email verified successfully! You can now log in.", request.url),
+      new URL(
+        `/auth/confirmation?status=success&message=${encodeURIComponent("Email verified successfully!")}`,
+        request.url,
+      ),
     )
   } catch (error) {
     console.error("Error verifying email:", error)
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent("Email verification failed")}`, request.url),
+      new URL(
+        `/auth/confirmation?status=error&message=${encodeURIComponent("An unexpected error occurred")}`,
+        request.url,
+      ),
     )
   }
 }
