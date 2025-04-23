@@ -6,11 +6,9 @@ export function middleware(request: NextRequest) {
 
   // Check if this is a Supabase auth callback with a code parameter
   if (pathname === "/" && searchParams.has("code")) {
-    // Get the code from the URL
-    const code = searchParams.get("code")
-
-    // Redirect to our confirmation handler with the code
-    return NextResponse.redirect(new URL(`/auth/confirm?token=${code}&type=signup`, request.url))
+    // For Supabase auth, we should NOT intercept the code parameter
+    // Let Supabase's client-side SDK handle it instead
+    return NextResponse.next()
   }
 
   return NextResponse.next()

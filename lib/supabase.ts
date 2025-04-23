@@ -24,7 +24,7 @@ export const createServerSupabaseClient = (cookieStore?: any) => {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false, // Important: we handle this ourselves in middleware
+        detectSessionInUrl: true, // Let Supabase detect the code in URLs
         flowType: "pkce",
       },
     })
@@ -33,7 +33,7 @@ export const createServerSupabaseClient = (cookieStore?: any) => {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false, // Important: we handle this ourselves in middleware
+      detectSessionInUrl: true, // Let Supabase detect the code in URLs
       flowType: "pkce",
     },
   })
@@ -49,7 +49,7 @@ export const createClientSupabaseClient = () => {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false, // Important: we handle this ourselves in middleware
+      detectSessionInUrl: true, // Let Supabase detect the code in URLs
       flowType: "pkce",
     },
   })
