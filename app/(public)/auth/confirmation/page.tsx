@@ -13,11 +13,18 @@ export default function ConfirmationPage() {
   const [message, setMessage] = useState("Thank you! Your email has been confirmed.")
 
   useEffect(() => {
-    const status = searchParams.get("status")
-
-    if (status === "error") {
-      setStatus("error")
-      setMessage("There was a problem verifying your email. Please try again.")
+    // Only update if searchParams exists and has a status
+    if (searchParams && searchParams.has("status")) {
+      const statusParam = searchParams.get("status")
+      if (statusParam === "error") {
+        setStatus("error")
+        const errorMsg = searchParams.get("message")
+        setMessage(errorMsg || "There was a problem verifying your email. Please try again.")
+      } else if (statusParam === "success") {
+        setStatus("success")
+        const successMsg = searchParams.get("message")
+        setMessage(successMsg || "Thank you! Your email has been confirmed.")
+      }
     }
   }, [searchParams])
 
