@@ -30,11 +30,8 @@ export async function GET(request: NextRequest) {
     // Create a Supabase client
     const supabase = createServerSupabaseClient()
 
-    // Verify the email with the token
-    const { error } = await supabase.auth.verifyOtp({
-      token_hash: token,
-      type: "signup",
-    })
+    // Exchange the code for a session
+    const { error } = await supabase.auth.exchangeCodeForSession(token)
 
     if (error) {
       console.error("Supabase verification error:", error)

@@ -9,8 +9,8 @@ type SupabaseClient = ReturnType<typeof createClient>
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-// Use the site URL from environment or fallback to localhost for development
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
+// Use the site URL from environment or fallback to the Vercel deployment URL
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mymedipass.vercel.app"
 
 // For server components
 export const createServerSupabaseClient = (cookieStore?: any) => {
@@ -24,10 +24,8 @@ export const createServerSupabaseClient = (cookieStore?: any) => {
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false, // Important: we handle this ourselves in middleware
         flowType: "pkce",
-        // Use the site URL from environment
-        redirectTo: `${siteUrl}/auth/confirm`,
       },
     })
   }
@@ -35,10 +33,8 @@ export const createServerSupabaseClient = (cookieStore?: any) => {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // Important: we handle this ourselves in middleware
       flowType: "pkce",
-      // Use the site URL from environment
-      redirectTo: `${siteUrl}/auth/confirm`,
     },
   })
 }
@@ -53,10 +49,8 @@ export const createClientSupabaseClient = () => {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // Important: we handle this ourselves in middleware
       flowType: "pkce",
-      // Use the site URL from environment
-      redirectTo: `${siteUrl}/auth/confirm`,
     },
   })
   return clientSupabaseClient
