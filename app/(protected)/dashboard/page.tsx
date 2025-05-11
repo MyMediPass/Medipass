@@ -32,7 +32,7 @@ export default function Dashboard() {
   const [medications, setMedications] = useState([
     {
       id: 1,
-      name: "Lisinopril",
+      name: "Panadol",
       dosage: "10mg",
       time: "8:00 AM",
       instructions: "Take with breakfast",
