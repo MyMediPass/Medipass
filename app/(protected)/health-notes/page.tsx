@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,54 +19,11 @@ import {
 } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { format } from "date-fns"
-
-type Note = {
-  id: number
-  title: string
-  content: string
-  date: Date
-  tags: string[]
-}
+import { getHealthNotes, Note } from "@/lib/health-notes"
 
 export default function HealthNotesPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: 1,
-      title: "Blood Pressure Tracking",
-      content: "Morning reading: 120/80, Evening reading: 118/78. Feeling good today, no dizziness.",
-      date: new Date("2025-04-15"),
-      tags: ["blood pressure", "measurements"],
-    },
-    {
-      id: 2,
-      title: "Medication Side Effects",
-      content: "Started experiencing mild headaches after taking Lisinopril. Will monitor for the next few days.",
-      date: new Date("2025-04-10"),
-      tags: ["medication", "side effects"],
-    },
-    {
-      id: 3,
-      title: "Exercise Log",
-      content: "30 minutes walking, 15 minutes stretching. Felt energized afterward. Heart rate peaked at 125 bpm.",
-      date: new Date("2025-04-08"),
-      tags: ["exercise", "fitness"],
-    },
-    {
-      id: 4,
-      title: "Diet Changes",
-      content: "Started reducing sodium intake. Replaced salt with herbs and spices. Meals still taste good!",
-      date: new Date("2025-04-05"),
-      tags: ["diet", "nutrition"],
-    },
-    {
-      id: 5,
-      title: "Sleep Quality",
-      content: "Slept 7.5 hours. Woke up once during the night. Overall sleep quality: good.",
-      date: new Date("2025-04-03"),
-      tags: ["sleep", "wellness"],
-    },
-  ])
+  const [notes, setNotes] = useState<Note[]>([])
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [newNote, setNewNote] = useState({
@@ -74,6 +31,14 @@ export default function HealthNotesPage() {
     content: "",
     tags: "",
   })
+
+  // Fetch notes when component mounts
+  useEffect(() => {
+    // In a real app, we would get the userId from auth context/session
+    const userId = "user123" // Placeholder userId
+    const fetchedNotes = getHealthNotes(userId)
+    setNotes(fetchedNotes)
+  }, [])
 
   const filteredNotes = notes.filter((note) => {
     return (
@@ -212,9 +177,8 @@ export default function HealthNotesPage() {
                     {filteredNotes.map((note) => (
                       <div
                         key={note.id}
-                        className={`p-4 cursor-pointer hover:bg-accent/50 transition-colors ${
-                          selectedNote?.id === note.id ? "bg-accent" : ""
-                        }`}
+                        className={`p-4 cursor-pointer hover:bg-accent/50 transition-colors ${selectedNote?.id === note.id ? "bg-accent" : ""
+                          }`}
                         onClick={() => setSelectedNote(note)}
                       >
                         <div className="flex items-start justify-between">
