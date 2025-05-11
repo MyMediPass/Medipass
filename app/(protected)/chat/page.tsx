@@ -43,7 +43,7 @@ export default function ChatPage() {
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-6 px-4 sm:px-8">
                     <MessageSquare className="w-6 h-6 text-primary" />
-                    <h1 className="text-2xl font-bold">Chat with Medipass</h1>
+                    <h1 className="text-2xl font-bold">Chat with Healie</h1>
                 </div>
 
                 {/* Messages */}
@@ -53,7 +53,7 @@ export default function ChatPage() {
                             <div className="flex items-center justify-center h-[60vh]">
                                 <div className="text-center space-y-3">
                                     <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground/60" />
-                                    <h3 className="text-lg font-medium">Start a conversation with Medipass</h3>
+                                    <h3 className="text-lg font-medium">Start a conversation with Healie</h3>
                                     <p className="text-sm text-muted-foreground max-w-sm">
                                         Upload medical documents or simply ask questions about your health.
                                     </p>
@@ -191,7 +191,7 @@ export default function ChatPage() {
                             </Button>
 
                             <Input
-                                placeholder="Message Medi..."
+                                placeholder="Message Healie..."
                                 value={input}
                                 onChange={handleInputChange}
                                 className="flex-1 border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/40 backdrop-blur-sm"

@@ -186,12 +186,12 @@ export default function Dashboard() {
           </CardFooter>
         </Card>
 
-        {/* Ask MediPass AI */}
+        {/* Ask Healie AI */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              Ask MediPass AI
+              Ask Healie AI
               {isOfflineMode ? (
                 <Badge
                   variant="outline"

@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { buildLLMContext, LLMContext } from "@/lib/llm-context"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 
 export default function LLMContextDemoPage() {
     const [userId, setUserId] = useState("user123")
     const [llmContext, setLlmContext] = useState<LLMContext | null>(null)
-    const [activeTab, setActiveTab] = useState("health-notes")
+    const [activeTab, setActiveTab] = useState("profile")
     const [jsonView, setJsonView] = useState(false)
 
     useEffect(() => {
@@ -27,6 +28,9 @@ export default function LLMContextDemoPage() {
             let dataToRender = {}
 
             switch (activeTab) {
+                case "profile":
+                    dataToRender = llmContext.profile
+                    break
                 case "health-notes":
                     dataToRender = llmContext.healthNotes
                     break
@@ -57,6 +61,93 @@ export default function LLMContextDemoPage() {
         }
 
         switch (activeTab) {
+            case "profile":
+                return (
+                    <div className="space-y-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Personal Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="text-sm font-medium">Name:</div>
+                                    <div>{llmContext.profile.name}</div>
+
+                                    <div className="text-sm font-medium">Age:</div>
+                                    <div>{llmContext.profile.age}</div>
+
+                                    <div className="text-sm font-medium">Gender:</div>
+                                    <div>{llmContext.profile.gender}</div>
+
+                                    <div className="text-sm font-medium">Date of Birth:</div>
+                                    <div>{llmContext.profile.dateOfBirth}</div>
+
+                                    <div className="text-sm font-medium">Email:</div>
+                                    <div>{llmContext.profile.email}</div>
+
+                                    <div className="text-sm font-medium">Phone:</div>
+                                    <div>{llmContext.profile.phone}</div>
+
+                                    <div className="text-sm font-medium">Address:</div>
+                                    <div>{llmContext.profile.address}</div>
+
+                                    <div className="text-sm font-medium">Primary Physician:</div>
+                                    <div>{llmContext.profile.primaryPhysician}</div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Emergency Contact</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="text-sm font-medium">Name:</div>
+                                    <div>{llmContext.profile.emergencyContact.name}</div>
+
+                                    <div className="text-sm font-medium">Relation:</div>
+                                    <div>{llmContext.profile.emergencyContact.relation}</div>
+
+                                    <div className="text-sm font-medium">Phone:</div>
+                                    <div>{llmContext.profile.emergencyContact.phone}</div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>AI Preferences</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="text-sm font-medium">Response Style:</div>
+                                    <div>
+                                        <Badge variant="outline">{llmContext.profile.aiPreferences.responseStyle}</Badge>
+                                    </div>
+
+                                    <div className="text-sm font-medium">Medical Terminology:</div>
+                                    <div>
+                                        <Badge variant="outline">{llmContext.profile.aiPreferences.medicalTerminologyLevel}</Badge>
+                                    </div>
+
+                                    <div className="text-sm font-medium">Reminder Frequency:</div>
+                                    <div>
+                                        <Badge variant="outline">{llmContext.profile.aiPreferences.reminderFrequency}</Badge>
+                                    </div>
+
+                                    <div className="text-sm font-medium">Preferred Topics:</div>
+                                    <div className="flex flex-wrap gap-1">
+                                        {llmContext.profile.aiPreferences.preferredTopics.map((topic, index) => (
+                                            <Badge key={index} variant="secondary">{topic}</Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )
+
             case "health-notes":
                 return (
                     <div className="space-y-4">
@@ -201,6 +292,7 @@ export default function LLMContextDemoPage() {
 
             <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mb-4">
+                    <TabsTrigger value="profile">Profile</TabsTrigger>
                     <TabsTrigger value="health-notes">Health Notes</TabsTrigger>
                     <TabsTrigger value="health-vitals">Health Vitals</TabsTrigger>
                     <TabsTrigger value="family-history">Family History</TabsTrigger>

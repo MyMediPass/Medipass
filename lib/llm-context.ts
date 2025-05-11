@@ -2,8 +2,10 @@ import { getHealthNotes, Note } from "./health-notes"
 import { getHealthVitals, VitalData, getHistoricalVitalData, HistoricalData } from "./health-vitals"
 import { getFamilyHistory, FamilyMember } from "./family-history"
 import { getMedications, Medication } from "./medications"
+import { getProfile, Profile } from "./profile"
 
 export type LLMContext = {
+    profile: Profile
     healthNotes: Note[]
     healthVitals: VitalData[]
     historicalVitalData: HistoricalData
@@ -14,6 +16,7 @@ export type LLMContext = {
 
 export function buildLLMContext(userId: string): LLMContext {
     // Collect all the data we need for the LLM context
+    const profile = getProfile(userId)
     const healthNotes = getHealthNotes(userId)
     const healthVitals = getHealthVitals(userId)
     const historicalVitalData = getHistoricalVitalData(userId)
@@ -22,6 +25,7 @@ export function buildLLMContext(userId: string): LLMContext {
 
     // Return the combined context
     return {
+        profile,
         healthNotes,
         healthVitals,
         historicalVitalData,
