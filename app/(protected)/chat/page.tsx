@@ -33,7 +33,7 @@ export default function ChatPage() {
     }
 
     return (
-        <div className="relative h-[calc(100vh-80px)] flex flex-col overflow-hidden">
+        <div className="relative h-[calc(100vh-80px)] flex flex-col overflow-hidden rounded-2xl">
             {/* Gradient background */} 
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 opacity-80">
                 <div className="absolute inset-0 radial-gradient" />
