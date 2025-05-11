@@ -1,22 +1,25 @@
-import type React from "react"
-import { MainNav } from "@/components/main-nav"
-import { Footer } from "@/components/footer"
+import { AppSidebar } from "@/components/app-sidebar"
+import { ChartAreaInteractive } from "@/components/chart-area-interactive"
+import { DataTable } from "@/components/data-table"
+import { SectionCards } from "@/components/section-cards"
+import { SiteHeader } from "@/components/site-header"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { ProtectedRoute } from "@/components/protected-route"
 
-export default function ProtectedLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen">
-        <MainNav />
-        <div className="flex flex-col flex-1 min-w-0">
-          <main className="flex-1 p-6 overflow-auto">{children}</main>
-          <Footer />
-        </div>
-      </div>
+      <SidebarProvider>
+        <AppSidebar variant="inset" />
+        <SidebarInset>
+          {/* <SiteHeader /> */}
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-2 p-6">
+              {children}
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     </ProtectedRoute>
   )
 }

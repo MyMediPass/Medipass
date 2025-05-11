@@ -1,6 +1,8 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   ArrowUpCircleIcon,
   BarChartIcon,
@@ -17,12 +19,26 @@ import {
   SearchIcon,
   SettingsIcon,
   UsersIcon,
+  Home,
+  BarChart2,
+  FileText,
+  Pill,
+  Calendar,
+  Activity,
+  Syringe,
+  User,
+  FolderOpen,
+  StickyNote,
+  MessageSquare,
+  Settings,
+  LogOut,
 } from "lucide-react"
 
-import { NavDocuments } from "@/components/nav-documents"
+import { useAuth } from "@/context/auth-context"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import { Logo } from "./logo"
 import {
   Sidebar,
   SidebarContent,
@@ -33,148 +49,120 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "#",
-      icon: LayoutDashboardIcon,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: ListIcon,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: BarChartIcon,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: FolderIcon,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: UsersIcon,
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: CameraIcon,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: FileTextIcon,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: FileCodeIcon,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: SettingsIcon,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: HelpCircleIcon,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: SearchIcon,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: DatabaseIcon,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: ClipboardListIcon,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: FileIcon,
-    },
-  ],
+import type { LucideIcon } from "lucide-react"
+
+interface NavItem {
+  name: string
+  href: string
+  icon: LucideIcon
+  title?: string
+  url?: string
 }
 
+interface NavItemGroup {
+  groupTitle: string
+  items: NavItem[]
+}
+
+const primaryNavConfig: NavItemGroup[] = [
+  {
+    groupTitle: "Overview",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: Home },
+      { name: "Health Summary", href: "/health-summary", icon: BarChart2 },
+    ],
+  },
+  {
+    groupTitle: "Records",
+    items: [
+      { name: "Test Results", href: "/test-results", icon: FileText },
+      { name: "Medications", href: "/medications", icon: Pill },
+      { name: "Past Visits", href: "/visits", icon: Calendar },
+      { name: "Health Vitals", href: "/health-vitals", icon: Activity },
+      { name: "Vaccinations", href: "/vaccination-record", icon: Syringe },
+    ],
+  },
+  {
+    groupTitle: "Personal Info",
+    items: [
+      { name: "Profile", href: "/profile", icon: User },
+      { name: "Family History", href: "/family-history", icon: User },
+    ],
+  },
+  {
+    groupTitle: "Notes & Files",
+    items: [
+      { name: "Health Notes", href: "/health-notes", icon: StickyNote },
+      { name: "Documents", href: "/documents", icon: FolderOpen },
+    ],
+  },
+  {
+    groupTitle: "Communication",
+    items: [{ name: "Chat History", href: "/chat-history", icon: MessageSquare }],
+  },
+]
+
+const adminNavItem: NavItem = {
+  name: "Admin Settings",
+  href: "/admin/settings",
+  icon: Settings,
+}
+
+const staticNavSecondaryItems = [
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+  },
+  {
+    title: "Get Help",
+    url: "/help",
+    icon: HelpCircleIcon,
+  },
+  {
+    title: "Search",
+    url: "/search",
+    icon: SearchIcon,
+  },
+]
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user: authUser, signOut } = useAuth()
+  const isAdmin = authUser?.role === "admin"
+
+  const currentAdminItem = isAdmin ? adminNavItem : undefined;
+
+  const userPropForNavUser = React.useMemo(() => {
+    if (!authUser) return null
+
+    // Extract user metadata, if it exists
+    const metadata = authUser.user_metadata || {};
+
+    // Determine the name: check common metadata fields, then email, then fallback
+    const userName = metadata.name || metadata.full_name || authUser.email || "User";
+
+    // Determine the avatar: check common metadata fields for an avatar URL
+    const userAvatar = metadata.avatar_url || metadata.picture || undefined;
+
+    return {
+      name: userName as string, // Cast to string, as it will have a fallback
+      email: (authUser.email as string) || "",
+      avatar: userAvatar as string | undefined, // This can be undefined
+    }
+  }, [authUser])
+
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar collapsible="offcanvas" {...props} className="main-sidebar">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="#">
-                <ArrowUpCircleIcon className="h-5 w-5" />
-                <span className="text-base font-semibold">Acme Inc.</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <Link href="/dashboard">
+          <Logo size="lg" linkWrapper={false} />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+          <NavMain navGroups={primaryNavConfig} adminItem={currentAdminItem} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        {userPropForNavUser && <NavUser user={userPropForNavUser} onSignOut={signOut} />}
       </SidebarFooter>
     </Sidebar>
   )

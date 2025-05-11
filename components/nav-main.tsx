@@ -1,57 +1,89 @@
 "use client"
 
-import { MailIcon, PlusCircleIcon, type LucideIcon } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import * as React from "react"
+import type { LucideIcon } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import {
-  SidebarGroup,
-  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupContent,
 } from "@/components/ui/sidebar"
 
+interface NavItem {
+  name: string
+  href: string
+  icon: LucideIcon
+  title?: string
+  url?: string
+}
+
+interface NavItemGroup {
+  groupTitle: string
+  items: NavItem[]
+}
+
+const SidebarGroupLabel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <div className={`mt-4 px-3 py-1 text-xs font-semibold uppercase text-muted-foreground ${className || ""}`}>
+    {children}
+  </div>
+);
+
 export function NavMain({
-  items,
+  navGroups,
+  adminItem,
 }: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-  }[]
+  navGroups: NavItemGroup[]
+  adminItem?: NavItem
 }) {
+  const pathname = usePathname()
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
-        <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <SidebarMenuButton
-              tooltip="Quick Create"
-              className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-            >
-              <PlusCircleIcon />
-              <span>Quick Create</span>
-            </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="h-9 w-9 shrink-0 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <MailIcon />
-              <span className="sr-only">Inbox</span>
-            </Button>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        {navGroups.map((group) => (
+          <React.Fragment key={group.groupTitle}>
+            <SidebarGroupLabel>{group.groupTitle}</SidebarGroupLabel>
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={item.name}
+                  >
+                    <Link href={item.href}>
+                      {item.icon && <item.icon className="h-5 w-5" />}
+                      <span>{item.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </React.Fragment>
+        ))}
+        {adminItem && (
+          <React.Fragment key={adminItem.href}>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === adminItem.href}
+                  tooltip={adminItem.name}
+                >
+                  <Link href={adminItem.href}>
+                    {adminItem.icon && <adminItem.icon className="h-5 w-5" />}
+                    <span>{adminItem.name}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </React.Fragment>
+        )}
       </SidebarGroupContent>
     </SidebarGroup>
   )
