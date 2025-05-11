@@ -39,6 +39,7 @@ import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import { Logo } from "./logo"
+import { Button } from "@/components/ui/button"
 import {
   Sidebar,
   SidebarContent,
@@ -98,7 +99,10 @@ const primaryNavConfig: NavItemGroup[] = [
   },
   {
     groupTitle: "Communication",
-    items: [{ name: "Chat History", href: "/chat-history", icon: MessageSquare }],
+    items: [
+      { name: "Chat", href: "/chat", icon: MessageSquare },
+      { name: "Chat History", href: "/chat-history", icon: MessageSquare }
+    ],
   },
 ]
 
@@ -157,9 +161,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <Link href="/dashboard">
           <Logo size="lg" linkWrapper={false} />
         </Link>
+        <div className="mt-4">
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            size="sm"
+            asChild
+          >
+            <Link href="/chat">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Ask Medi
+            </Link>
+          </Button>
+        </div>
       </SidebarHeader>
       <SidebarContent>
-          <NavMain navGroups={primaryNavConfig} adminItem={currentAdminItem} />
+        <NavMain navGroups={primaryNavConfig} adminItem={currentAdminItem} />
       </SidebarContent>
       <SidebarFooter>
         {userPropForNavUser && <NavUser user={userPropForNavUser} onSignOut={signOut} />}

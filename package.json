@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.11",
+    "@ai-sdk/react": "^1.2.12",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
@@ -43,7 +45,8 @@
     "@radix-ui/react-tooltip": "^1.2.6",
     "@supabase/supabase-js": "latest",
     "@tanstack/react-table": "^8.21.3",
-    "ai": "latest",
+    "agents": "^0.0.82",
+    "ai": "^4.3.15",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
