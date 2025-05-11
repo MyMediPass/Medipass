@@ -34,26 +34,26 @@ export default function ChatPage() {
 
     return (
         <div className="relative h-[calc(100vh-80px)] flex flex-col overflow-hidden">
-            {/* Gradient background */}
+            {/* Gradient background */} 
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 opacity-80">
                 <div className="absolute inset-0 radial-gradient" />
             </div>
 
-            <div className="relative flex flex-col h-full px-4 sm:px-8 pt-6 z-10">
+            <div className="relative flex flex-col h-full p-6 z-10">
                 {/* Header */}
-                <div className="flex items-center gap-2 mb-6">
+                <div className="flex items-center gap-2 mb-6 px-4 sm:px-8">
                     <MessageSquare className="w-6 h-6 text-primary" />
-                    <h1 className="text-2xl font-bold">Chat with Medi</h1>
+                    <h1 className="text-2xl font-bold">Chat with Medipass</h1>
                 </div>
 
                 {/* Messages */}
-                <ScrollArea className="flex-1 pr-4">
+                <ScrollArea className="flex-1 pr-4 px-4 sm:px-8">
                     <div className="flex flex-col space-y-6 pb-6">
                         {messages.length === 0 ? (
                             <div className="flex items-center justify-center h-[60vh]">
                                 <div className="text-center space-y-3">
                                     <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground/60" />
-                                    <h3 className="text-lg font-medium">Start a conversation with Medi</h3>
+                                    <h3 className="text-lg font-medium">Start a conversation with Medipass</h3>
                                     <p className="text-sm text-muted-foreground max-w-sm">
                                         Upload medical documents or simply ask questions about your health.
                                     </p>
@@ -70,7 +70,7 @@ export default function ChatPage() {
                                             }`}
                                     >
                                         {message.role === 'assistant' && (
-                                            <Avatar className="h-8 w-8 bg-primary">
+                                            <Avatar className="h-8 w-8 bg-primary hidden sm:block">
                                                 <span className="text-xs">M</span>
                                             </Avatar>
                                         )}
@@ -145,7 +145,7 @@ export default function ChatPage() {
                 </ScrollArea>
 
                 {/* Input form */}
-                <div className="sticky bottom-0 py-6 backdrop-blur-sm bg-white/30 dark:bg-black/30">
+                <div className="sticky rounded-lg bottom-0 py-4 w-full backdrop-blur-sm bg-white/30 dark:bg-black/30 px-4 sm:px-4">
                     <form onSubmit={onSubmit} className="flex flex-col gap-3">
                         {files && files.length > 0 && (
                             <div className="flex items-center gap-2 p-2 bg-muted/40 rounded-md">

@@ -170,7 +170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           >
             <Link href="/chat">
               <MessageSquare className="h-4 w-4 mr-2" />
-              Ask Medi
+              Ask Medipass
             </Link>
           </Button>
         </div>

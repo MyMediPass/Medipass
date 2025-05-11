@@ -3,7 +3,7 @@
 import type React from "react"
 
 import Link from "next/link"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,13 +11,7 @@ import {
   Pill,
   Calendar,
   MessageSquare,
-  Send,
   Bot,
-  User,
-  Paperclip,
-  Check,
-  ImageIcon,
-  FileText,
   AlertCircle,
   Info,
   Settings,
@@ -26,7 +20,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useGrokChat } from "@/hooks/use-grok-chat"
+import { FriendlyChat } from "@/components/FriendlyChat"
 
 export default function Dashboard() {
   const [medications, setMedications] = useState([
@@ -56,9 +50,6 @@ export default function Dashboard() {
     },
   ])
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
-
   const appointments = [
     {
       id: 1,
@@ -78,84 +69,12 @@ export default function Dashboard() {
     },
   ]
 
-  // Initialize chat with a welcome message
-  const {
-    messages: chatMessages,
-    input: chatInput,
-    handleInputChange,
-    handleSubmit: handleSendMessage,
-    isLoading,
-    error: chatError,
-    isOfflineMode,
-    attachments,
-    handleAddAttachments,
-    handleRemoveAttachment,
-    handleClearAttachments,
-  } = useGrokChat([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hello! I'm MediPass, your AI health assistant. How can I help you today?",
-    },
-  ])
-
-  // Scroll to bottom of chat when messages change
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [chatMessages])
+  // Mock API status
+  const isOfflineMode = false
+  const chatError = null
 
   const handleToggleMedication = (id: number) => {
     setMedications(medications.map((med) => (med.id === id ? { ...med, taken: !med.taken } : med)))
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      const form = e.currentTarget.form
-      if (form) form.requestSubmit()
-    }
-  }
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files)
-      handleAddAttachments(newFiles)
-    }
-  }
-
-  const renderAttachmentPreview = (file: File) => {
-    const isImage = file.type.startsWith("image/")
-
-    return (
-      <div key={file.name} className="flex items-center gap-2 p-2 rounded-md bg-muted">
-        {isImage ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
-        <span className="text-xs truncate max-w-[150px]">{file.name}</span>
-        <button
-          onClick={() => handleRemoveAttachment(attachments.indexOf(file))}
-          className="ml-auto text-muted-foreground hover:text-foreground"
-          type="button"
-        >
-          <span className="sr-only">Remove</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="lucide lucide-x"
-          >
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </div>
-    )
   }
 
   return (
@@ -199,7 +118,21 @@ export default function Dashboard() {
                     >
                       {med.taken ? (
                         <>
-                          <Check className="h-4 w-4 mr-1" /> Taken
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="lucide lucide-check mr-1 h-4 w-4"
+                          >
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                          Taken
                         </>
                       ) : (
                         "Take"
@@ -268,13 +201,13 @@ export default function Dashboard() {
                 </Badge>
               ) : (
                 <Badge variant="outline" className="ml-2 text-xs font-normal">
-                  Powered by Grok
+                  Powered by Claude
                 </Badge>
               )}
             </CardTitle>
             <CardDescription>Get quick answers to your health questions</CardDescription>
             {isOfflineMode && (
-              <Alert variant="warning" className="mt-2">
+              <Alert className="mt-2">
                 <Info className="h-4 w-4" />
                 <AlertDescription>
                   <div className="text-sm">
@@ -296,135 +229,22 @@ export default function Dashboard() {
               <Alert variant="destructive" className="mt-2">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  {chatError.message || "An error occurred while connecting to the AI service."}
+                  {"An error occurred while connecting to the AI service."}
                 </AlertDescription>
               </Alert>
             )}
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <ScrollArea className="h-[250px] w-full pr-4">
-                <div className="space-y-4">
-                  {chatMessages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"}`}
-                    >
-                      <div
-                        className={`flex gap-3 max-w-[80%] ${message.role === "assistant" ? "" : "flex-row-reverse"}`}
-                      >
-                        <Avatar className={`h-8 w-8 ${message.role === "assistant" ? "bg-primary/10" : "bg-muted"}`}>
-                          <AvatarFallback>
-                            {message.role === "assistant" ? (
-                              <Bot className="h-4 w-4 text-primary" />
-                            ) : (
-                              <User className="h-4 w-4" />
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div
-                          className={`rounded-lg p-3 ${
-                            message.role === "assistant" ? "bg-muted" : "bg-primary text-primary-foreground"
-                          }`}
-                        >
-                          <p className="text-sm whitespace-pre-line">{message.content}</p>
-
-                          {/* Display error message if any */}
-                          {message.error && (
-                            <Alert variant="destructive" className="mt-2">
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription className="text-xs">{message.error}</AlertDescription>
-                            </Alert>
-                          )}
-
-                          {/* Display attachments if any */}
-                          {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-2 space-y-1">
-                              {message.attachments.map((file, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {file.type.startsWith("image/") ? (
-                                    <ImageIcon className="h-3 w-3 mr-1" />
-                                  ) : (
-                                    <FileText className="h-3 w-3 mr-1" />
-                                  )}
-                                  {file.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="flex gap-3 max-w-[80%]">
-                        <Avatar className="h-8 w-8 bg-primary/10">
-                          <AvatarFallback>
-                            <Bot className="h-4 w-4 text-primary" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="rounded-lg bg-muted p-3">
-                          <div className="flex space-x-2">
-                            <div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-bounce" />
-                            <div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:0.2s]" />
-                            <div className="h-2 w-2 rounded-full bg-muted-foreground/30 animate-bounce [animation-delay:0.4s]" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-              </ScrollArea>
-
-              {/* File attachments preview */}
-              {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {attachments.map((file) => renderAttachmentPreview(file))}
-                </div>
-              )}
-
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-shrink-0"
-                  disabled={isLoading}
-                >
-                  <Paperclip className="h-4 w-4" />
-                  <span className="sr-only">Attach file</span>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx,.txt"
-                  />
-                </Button>
-                <Input
-                  placeholder="Ask about your medications, appointments, or health..."
-                  value={chatInput}
-                  onChange={handleInputChange}
-                  onKeyDown={handleKeyDown}
-                  className="flex-1"
-                  disabled={isLoading}
-                  name="message"
-                />
-                <Button
-                  size="icon"
-                  type="submit"
-                  disabled={(!chatInput.trim() && attachments.length === 0) || isLoading}
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="sr-only">Send message</span>
-                </Button>
-              </form>
-            </div>
+            <FriendlyChat
+              initialMessages={[
+                {
+                  id: "1",
+                  role: "assistant",
+                  content: "Hello! I'm MediPass, your AI health assistant. How can I help you today?",
+                }
+              ]}
+              height="250px"
+            />
           </CardContent>
           <CardFooter className="text-xs text-muted-foreground">
             <p>
