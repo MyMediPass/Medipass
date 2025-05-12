@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { use, useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, TrendingUp, Brain, Loader2 } from "lucide-react"
+import { FileText, TrendingUp, Brain, Loader2, ChevronRight } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { createBrowserClient } from "@supabase/ssr"
 import {
@@ -54,6 +54,7 @@ export default function LabReportPage({ params }: { params: Promise<{ id: string
     const [selectedResultUnit, setSelectedResultUnit] = useState("")
     const [selectedResultData, setSelectedResultData] = useState<any[]>([])
     const [selectedResultInterpretation, setSelectedResultInterpretation] = useState("")
+    const [expandedPanels, setExpandedPanels] = useState<Set<string>>(new Set())
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -97,6 +98,18 @@ export default function LabReportPage({ params }: { params: Promise<{ id: string
 
         fetchReport()
     }, [id])
+
+    const togglePanel = (panelId: string) => {
+        setExpandedPanels(prev => {
+            const next = new Set(prev)
+            if (next.has(panelId)) {
+                next.delete(panelId)
+            } else {
+                next.add(panelId)
+            }
+            return next
+        })
+    }
 
     const getStatusIndicator = (flag: string | null) => {
         if (!flag) return null
@@ -212,80 +225,90 @@ export default function LabReportPage({ params }: { params: Promise<{ id: string
             <ScrollArea className="h-[calc(100vh-8rem)]">
                 <div className="space-y-4 pr-4">
                     {report.panels.map((panel) => (
-                        <Card key={panel.id}>
-                            <CardHeader>
-                                <CardTitle className="text-lg">{panel.name}</CardTitle>
+                        <Card key={panel.id} className={expandedPanels.has(panel.id) ? "border-primary shadow-md" : ""}>
+                            <CardHeader className="pb-2 cursor-pointer" onClick={() => togglePanel(panel.id)}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <FileText className="h-4 w-4 text-primary" />
+                                        <CardTitle className="text-lg">{panel.name}</CardTitle>
+                                    </div>
+                                    <ChevronRight
+                                        className={`h-5 w-5 transition-transform ${expandedPanels.has(panel.id) ? "rotate-90" : ""}`}
+                                    />
+                                </div>
                                 {panel.reported_at && (
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                         Reported: {new Date(panel.reported_at).toLocaleDateString()}
                                     </p>
                                 )}
                             </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {panel.test_results.map((result, index) => (
-                                        <div key={index} className="border rounded-lg p-4 hover:border-primary/30 transition-colors">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="text-primary">
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        width="16"
-                                                        height="16"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    >
-                                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                                                        <polyline points="14 2 14 8 20 8" />
-                                                        <path d="M8 13h2" />
-                                                        <path d="M8 17h2" />
-                                                        <path d="M14 13h2" />
-                                                        <path d="M14 17h2" />
-                                                    </svg>
-                                                </div>
-                                                <h3 className="text-sm font-medium">{result.test_name}</h3>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="flex items-baseline gap-1">
-                                                        <span className="text-3xl font-bold">{result.result_value}</span>
-                                                        {result.units && <span className="text-sm text-muted-foreground">{result.units}</span>}
-                                                    </div>
-                                                    {result.reference_range && (
-                                                        <p className="text-xs text-muted-foreground">Range: {result.reference_range}</p>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    {getStatusIndicator(result.flag)}
-                                                    <div className="flex gap-2 mt-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-7 text-xs"
-                                                            onClick={() => handleShowTrend(result.test_name, result.units || '')}
+                            {expandedPanels.has(panel.id) && (
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        {panel.test_results.map((result, index) => (
+                                            <div key={index} className="border rounded-lg p-4 hover:border-primary/30 transition-colors">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="text-primary">
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="16"
+                                                            height="16"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
                                                         >
-                                                            <TrendingUp className="h-3 w-3 mr-1" />
-                                                            Compare Trend
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="h-7 text-xs"
-                                                            onClick={() => handleShowAIInterpretation(result.test_name)}
-                                                        >
-                                                            <Brain className="h-3 w-3 mr-1" />
-                                                            AI Interpretation
-                                                        </Button>
+                                                            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                                                            <polyline points="14 2 14 8 20 8" />
+                                                            <path d="M8 13h2" />
+                                                            <path d="M8 17h2" />
+                                                            <path d="M14 13h2" />
+                                                            <path d="M14 17h2" />
+                                                        </svg>
+                                                    </div>
+                                                    <h3 className="text-sm font-medium">{result.test_name}</h3>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <div className="flex items-baseline gap-1">
+                                                            <span className="text-3xl font-bold">{result.result_value}</span>
+                                                            {result.units && <span className="text-sm text-muted-foreground">{result.units}</span>}
+                                                        </div>
+                                                        {result.reference_range && (
+                                                            <p className="text-xs text-muted-foreground">Range: {result.reference_range}</p>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col gap-2">
+                                                        {getStatusIndicator(result.flag)}
+                                                        <div className="flex gap-2 mt-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() => handleShowTrend(result.test_name, result.units || '')}
+                                                            >
+                                                                <TrendingUp className="h-3 w-3 mr-1" />
+                                                                Compare Trend
+                                                            </Button>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="h-7 text-xs"
+                                                                onClick={() => handleShowAIInterpretation(result.test_name)}
+                                                            >
+                                                                <Brain className="h-3 w-3 mr-1" />
+                                                                AI Interpretation
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            )}
                         </Card>
                     ))}
                 </div>
