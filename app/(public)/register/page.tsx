@@ -20,9 +20,21 @@ export default function RegisterPage() {
     setError(null)
     setLoading(true)
 
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      setLoading(false)
+      return
+    }
+
     try {
       const supabase = createClient()
-      const { error } = await supabase.auth.signUp({
+      const { error: signUpError, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -30,11 +42,16 @@ export default function RegisterPage() {
         },
       })
 
-      if (error) throw error
+      if (signUpError) throw signUpError
 
-      router.push("/auth/confirmation")
+      if (data?.user) {
+        router.push("/auth/confirmation")
+      } else {
+        setError("Failed to create account. Please try again.")
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
+      console.error("Registration error:", err)
+      setError(err instanceof Error ? err.message : "An error occurred during registration")
     } finally {
       setLoading(false)
     }
