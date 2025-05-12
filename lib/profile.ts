@@ -26,11 +26,11 @@ export function getProfile(userId: string): Profile {
     // For now, returning mock data
     return {
         id: userId,
-        name: "Alex Johnson",
+        name: "Avis Chan",
         age: 31,
         gender: "Male",
         dateOfBirth: "1983-05-15",
-        email: "alex.johnson@example.com",
+        email: "avis@example.com",
         phone: "555-123-4567",
         address: "123 Health Street, Wellness City, CA 94123",
         primaryPhysician: "Dr. Sarah Williams",
