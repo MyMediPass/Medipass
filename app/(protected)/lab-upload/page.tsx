@@ -14,24 +14,46 @@ export default function LabUploadPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isAnalyzed, setIsAnalyzed] = useState(false)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setUploadedFile(e.target.files[0])
       setIsAnalyzed(false)
+      setStatusMessage(null)
     }
   }
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     if (!uploadedFile) return
 
     setIsAnalyzing(true)
+    setStatusMessage('Uploading file...')
 
-    // Simulate AI analysis
-    setTimeout(() => {
+    const formData = new FormData()
+    formData.append('file', uploadedFile)
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed')
+      }
+
+      setStatusMessage(`File uploaded: ${result.fileName}. Analysis job started.`)
+      console.log('Upload successful, Inngest job triggered:', result)
+    } catch (error: any) {
+      console.error('Analysis request failed:', error)
+      setStatusMessage(`Error: ${error.message}`)
+      setIsAnalyzed(false)
+    } finally {
       setIsAnalyzing(false)
-      setIsAnalyzed(true)
-    }, 2000)
+    }
   }
 
   const previousLabs = [
@@ -75,7 +97,7 @@ export default function LabUploadPage() {
               <CardDescription>Upload a PDF or image of your lab report to get an AI-generated summary</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center">
+              <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center relative">
                 <FileUp className="h-8 w-8 mb-4 text-muted-foreground" />
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Drag and drop your file here or click to browse</p>
@@ -116,6 +138,14 @@ export default function LabUploadPage() {
               )}
             </CardContent>
           </Card>
+
+          {statusMessage && (
+            <CardFooter>
+              <p className={`text-sm ${statusMessage.startsWith('Error:') ? 'text-red-500' : 'text-muted-foreground'}`}>
+                {statusMessage}
+              </p>
+            </CardFooter>
+          )}
 
           {isAnalyzed && (
             <Card>
