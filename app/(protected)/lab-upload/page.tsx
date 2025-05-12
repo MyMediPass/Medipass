@@ -2,25 +2,122 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileUp, FileText, Check, Clock } from "lucide-react"
+import { FileUp, FileText, Check, Clock, Loader2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { useRouter } from "next/navigation"
+import { createBrowserClient } from "@supabase/ssr"
+
+interface LabReport {
+  id: string
+  created_at: string
+  original_filename: string
+  status: string
+  panels: {
+    name: string
+    lab_name: string | null
+  }[]
+}
 
 export default function LabUploadPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isAnalyzed, setIsAnalyzed] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const [statusStep, setStatusStep] = useState(0)
+  const [newReportId, setNewReportId] = useState<string | null>(null)
+  const [previousReports, setPreviousReports] = useState<LabReport[]>([])
+  const [loadingReports, setLoadingReports] = useState(true)
+  const router = useRouter()
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const statusMessages = [
+    "Analyzing test results...",
+    "Verifying correctness...",
+    "Extracting data...",
+    "Pondering...",
+    "Almost there..."
+  ]
+
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout
+
+    if (isAnalyzing) {
+      pollInterval = setInterval(async () => {
+        // Update status message
+        setStatusStep((prev) => (prev + 1) % statusMessages.length)
+        setStatusMessage(statusMessages[statusStep])
+
+        // Check for new report
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: reports } = await supabase
+          .from('lab_reports')
+          .select('id, panels!inner(*)')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        if (reports && reports.length > 0 && reports[0].panels.length > 0) {
+          setNewReportId(reports[0].id)
+          setIsAnalyzing(false)
+          setStatusMessage("Analysis complete! Click below to view your results.")
+          // Refresh the list of reports
+          fetchReports()
+        }
+      }, 3000)
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [isAnalyzing, statusStep])
+
+  useEffect(() => {
+    fetchReports()
+  }, [])
+
+  const fetchReports = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: reports, error } = await supabase
+        .from('lab_reports')
+        .select(`
+          id,
+          created_at,
+          original_filename,
+          status,
+          panels (
+            name,
+            lab_name
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setPreviousReports(reports || [])
+    } catch (error) {
+      console.error('Error fetching reports:', error)
+    } finally {
+      setLoadingReports(false)
+    }
+  }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setUploadedFile(e.target.files[0])
-      setIsAnalyzed(false)
       setStatusMessage(null)
+      setNewReportId(null)
     }
   }
 
@@ -29,6 +126,7 @@ export default function LabUploadPage() {
 
     setIsAnalyzing(true)
     setStatusMessage('Uploading file...')
+    setStatusStep(0)
 
     const formData = new FormData()
     formData.append('file', uploadedFile)
@@ -45,37 +143,13 @@ export default function LabUploadPage() {
         throw new Error(result.error || 'Upload failed')
       }
 
-      setStatusMessage(`File uploaded: ${result.fileName}. Analysis job started.`)
-      console.log('Upload successful, Inngest job triggered:', result)
+      setStatusMessage(`File uploaded: ${result.fileName}. Starting analysis...`)
     } catch (error: any) {
       console.error('Analysis request failed:', error)
       setStatusMessage(`Error: ${error.message}`)
-      setIsAnalyzed(false)
-    } finally {
       setIsAnalyzing(false)
     }
   }
-
-  const previousLabs = [
-    {
-      id: 1,
-      name: "Complete Blood Count",
-      date: "March 15, 2025",
-      provider: "LabCorp",
-    },
-    {
-      id: 2,
-      name: "Lipid Panel",
-      date: "February 10, 2025",
-      provider: "Quest Diagnostics",
-    },
-    {
-      id: 3,
-      name: "Comprehensive Metabolic Panel",
-      date: "January 5, 2025",
-      provider: "LabCorp",
-    },
-  ]
 
   return (
     <div className="space-y-6">
@@ -126,7 +200,7 @@ export default function LabUploadPage() {
                     <Button onClick={handleAnalyze} disabled={isAnalyzing}>
                       {isAnalyzing ? (
                         <>
-                          <Clock className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Analyzing...
                         </>
                       ) : (
@@ -140,83 +214,28 @@ export default function LabUploadPage() {
           </Card>
 
           {statusMessage && (
-            <CardFooter>
-              <p className={`text-sm ${statusMessage.startsWith('Error:') ? 'text-red-500' : 'text-muted-foreground'}`}>
-                {statusMessage}
-              </p>
-            </CardFooter>
-          )}
-
-          {isAnalyzed && (
             <Card>
-              <CardHeader>
-                <CardTitle>AI Analysis Results</CardTitle>
-                <CardDescription>Plain-language summary of your lab results</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg bg-muted p-4">
-                  <h3 className="font-medium mb-2">Summary</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Your lab results are mostly within normal ranges. Your cholesterol levels have improved since your
-                    last test, with total cholesterol now at 185 mg/dL (normal range: &lt;200 mg/dL). Your LDL
-                    cholesterol is at 110 mg/dL, which is slightly above the optimal range but has decreased from your
-                    previous test.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-medium">Key Findings</h3>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-green-500/10 p-1">
-                          <Check className="h-4 w-4 text-green-500" />
-                        </div>
-                        <p className="font-medium">Total Cholesterol</p>
-                      </div>
-                      <p className="mt-2 text-sm">185 mg/dL (Normal range: &lt;200 mg/dL)</p>
-                      <p className="mt-1 text-xs text-green-600">Improved from previous test (200 mg/dL)</p>
-                    </div>
-
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-yellow-500/10 p-1">
-                          <Check className="h-4 w-4 text-yellow-500" />
-                        </div>
-                        <p className="font-medium">LDL Cholesterol</p>
-                      </div>
-                      <p className="mt-2 text-sm">110 mg/dL (Optimal range: &lt;100 mg/dL)</p>
-                      <p className="mt-1 text-xs text-green-600">Improved from previous test (122 mg/dL)</p>
-                    </div>
-
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-green-500/10 p-1">
-                          <Check className="h-4 w-4 text-green-500" />
-                        </div>
-                        <p className="font-medium">HDL Cholesterol</p>
-                      </div>
-                      <p className="mt-2 text-sm">55 mg/dL (Normal range: &gt;40 mg/dL)</p>
-                      <p className="mt-1 text-xs text-green-600">Stable from previous test (53 mg/dL)</p>
-                    </div>
-
-                    <div className="rounded-lg border p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-full bg-green-500/10 p-1">
-                          <Check className="h-4 w-4 text-green-500" />
-                        </div>
-                        <p className="font-medium">Triglycerides</p>
-                      </div>
-                      <p className="mt-2 text-sm">120 mg/dL (Normal range: &lt;150 mg/dL)</p>
-                      <p className="mt-1 text-xs text-green-600">Improved from previous test (145 mg/dL)</p>
-                    </div>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  {isAnalyzing ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  ) : newReportId ? (
+                    <Check className="h-6 w-6 text-green-500" />
+                  ) : (
+                    <Clock className="h-6 w-6 text-muted-foreground" />
+                  )}
+                  <div className="flex-1">
+                    <p className={`text-sm ${statusMessage.startsWith('Error:') ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      {statusMessage}
+                    </p>
                   </div>
+                  {newReportId && (
+                    <Button onClick={() => router.push(`/test-results/${newReportId}`)}>
+                      View Results
+                    </Button>
+                  )}
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button>Save to Health Records</Button>
-              </CardFooter>
             </Card>
           )}
         </TabsContent>
@@ -229,24 +248,46 @@ export default function LabUploadPage() {
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[400px]">
-                <div className="space-y-4">
-                  {previousLabs.map((lab) => (
-                    <div key={lab.id}>
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <p className="font-medium">{lab.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {lab.date} • {lab.provider}
-                          </p>
+                {loadingReports ? (
+                  <div className="flex items-center justify-center h-32">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : previousReports.length > 0 ? (
+                  <div className="space-y-4">
+                    {previousReports.map((report) => (
+                      <div key={report.id}>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-medium">{report.original_filename}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(report.created_at).toLocaleDateString()} • {report.panels[0]?.lab_name || 'Unknown Lab'}
+                            </p>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {report.panels.map((panel, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary/10 text-primary hover:bg-primary/20"
+                                >
+                                  {panel.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => router.push(`/test-results/${report.id}`)}>
+                            View
+                          </Button>
                         </div>
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
+                        <Separator className="my-4" />
                       </div>
-                      <Separator className="my-4" />
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-32 text-center">
+                    <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+                    <h3 className="font-medium">No reports found</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Upload your first lab report to get started</p>
+                  </div>
+                )}
               </ScrollArea>
             </CardContent>
           </Card>
