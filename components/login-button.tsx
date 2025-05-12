@@ -1,22 +1,24 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/context/auth-context"
+import { useUser } from "@/components/user-provider"
+import { useRouter } from "next/navigation"
 
 export function LoginButton() {
+  const { isAuthenticated, signOut } = useUser()
   const router = useRouter()
-  const { isAuthenticated, logout } = useAuth()
 
-  const handleLogin = () => {
-    router.push("/login")
+  if (isAuthenticated) {
+    return (
+      <Button variant="outline" onClick={() => signOut()}>
+        Sign out
+      </Button>
+    )
   }
 
-  return isAuthenticated ? (
-    <Button variant="outline" onClick={logout}>
-      Logout
+  return (
+    <Button onClick={() => router.push('/login')}>
+      Sign in
     </Button>
-  ) : (
-    <Button onClick={handleLogin}>Login</Button>
   )
 }

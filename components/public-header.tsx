@@ -1,38 +1,33 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Logo } from "@/components/logo"
-import { useAuth } from "@/context/auth-context"
+import { useUser } from "@/components/user-provider"
+import { Logo } from "./logo"
 
 export function PublicHeader() {
-  const router = useRouter()
-  const { isAuthenticated, signOut } = useAuth()
+  const { isAuthenticated, signOut } = useUser()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Use the Logo with its own link wrapper */}
-        <Logo />
-
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <>
-              <Button variant="outline" onClick={() => router.push("/dashboard")}>
-                Dashboard
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 flex">
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <Logo />
+          </Link>
+        </div>
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <nav className="flex items-center">
+            {isAuthenticated ? (
+              <Button variant="outline" onClick={() => signOut()}>
+                Sign out
               </Button>
-              <Button variant="outline" onClick={signOut}>
-                Logout
+            ) : (
+              <Button asChild>
+                <Link href="/login">Sign in</Link>
               </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" onClick={() => router.push("/login")}>
-                Login
-              </Button>
-              <Button onClick={() => router.push("/register")}>Sign up</Button>
-            </>
-          )}
+            )}
+          </nav>
         </div>
       </div>
     </header>

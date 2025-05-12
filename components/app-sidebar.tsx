@@ -34,7 +34,7 @@ import {
   LogOut,
 } from "lucide-react"
 
-import { useAuth } from "@/context/auth-context"
+import { useUser } from "@/components/user-provider"
 import { NavMain } from "@/components/nav-main"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
@@ -132,29 +132,29 @@ const staticNavSecondaryItems = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user: authUser, signOut } = useAuth()
-  const isAdmin = authUser?.role === "admin"
+  const { user, signOut } = useUser()
+  const isAdmin = user?.role === "admin"
 
   const currentAdminItem = isAdmin ? adminNavItem : undefined;
 
   const userPropForNavUser = React.useMemo(() => {
-    if (!authUser) return null
+    if (!user) return null
 
     // Extract user metadata, if it exists
-    const metadata = authUser.user_metadata || {};
+    const metadata = user.user_metadata || {};
 
     // Determine the name: check common metadata fields, then email, then fallback
-    const userName = metadata.name || metadata.full_name || authUser.email || "User";
+    const userName = metadata.name || metadata.full_name || user.email || "User";
 
     // Determine the avatar: check common metadata fields for an avatar URL
     const userAvatar = metadata.avatar_url || metadata.picture || undefined;
 
     return {
       name: userName as string, // Cast to string, as it will have a fallback
-      email: (authUser.email as string) || "",
+      email: (user.email as string) || "",
       avatar: userAvatar as string | undefined, // This can be undefined
     }
-  }, [authUser])
+  }, [user])
 
   return (
     <Sidebar collapsible="offcanvas" {...props} className="main-sidebar">

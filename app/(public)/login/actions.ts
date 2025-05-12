@@ -15,8 +15,12 @@ export async function login(formData: FormData) {
     const { error } = await supabase.auth.signInWithPassword(data)
 
     if (error) {
+        console.log('Login error:', error)
         redirect('/login?error=' + encodeURIComponent(error.message))
     }
+
+    // The session is automatically handled by Supabase's createClient
+    // No need to manually set cookies
 
     revalidatePath('/', 'layout')
     redirect('/dashboard')

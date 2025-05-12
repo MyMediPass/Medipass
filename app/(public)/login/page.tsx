@@ -9,13 +9,12 @@ import { AlertCircle, LockKeyhole, Mail, Check } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { login } from "./actions"
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: { message?: string; error?: string }
-}) {
-  const message = searchParams?.message
-  const error = searchParams?.error
+interface PageProps {
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export default async function LoginPage({ searchParams }: PageProps) {
+  const { message, error } = await searchParams
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
