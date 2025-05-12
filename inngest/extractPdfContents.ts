@@ -39,7 +39,7 @@ Example output:
         { "test": "UREA NITROGEN (BUN)", "result": 10, "reference_range": "7-25 mg/dL" },
         { "test": "CREATININE", "result": 0.68, "reference_range": "0.50-0.96 mg/dL" },
         { "test": "EGFR", "result": 122, "reference_range": ">=60 mL/min/1.73m2" },
-        { "test": "BUN/CREATININE RATIO", "result": "SEE NOTE", "reference_range": "6-22 (calc)" },
+        { "test": "BUN/CREATININE RATIO", "result": "N/A", "reference_range": "6-22 (calc)", "note": "BUN and creatinine are both in the normal range" },
         { "test": "SODIUM", "result": 136, "reference_range": "135-146 mmol/L" },
         { "test": "POTASSIUM", "result": 4.0, "reference_range": "3.5-5.3 mmol/L" },
         { "test": "CHLORIDE", "result": 101, "reference_range": "98-110 mmol/L" },
@@ -104,6 +104,7 @@ export interface ExtractedPdfData {
             result: string | number;
             flag?: string;
             reference_range: string;
+            note?: string;
         }>;
     }>;
 }

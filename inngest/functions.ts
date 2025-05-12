@@ -114,6 +114,7 @@ export const fileAnalysisRequested = inngest.createFunction(
                                     flag: result.flag ?? null,
                                     reference_range: result.reference_range ?? null,
                                     is_calculated: typeof result.result === 'string' && result.result.includes('calc'),
+                                    note: result.note ?? null,
                                     created_at: panel.reported || new Date().toISOString()
                                 });
                             if (insertResultError) throw new Error(`Failed to insert test_result: ${insertResultError.message}`);
