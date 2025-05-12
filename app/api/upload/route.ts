@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServiceRoleClient } from '@/lib/supabase'; // Import the service role client
 import { inngest } from '@/inngest/client'; // Import the Inngest client
+import { getUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
     try {
+        // Get user session
+        const user = await getUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
 
@@ -16,13 +23,13 @@ export async function POST(request: NextRequest) {
         const fileBuffer = Buffer.from(await file.arrayBuffer()); // Get file content as buffer
 
         // 1. Upload file to Supabase
-        const supabase = createSupabaseServiceRoleClient();
+        const supabaseAdmin = createSupabaseServiceRoleClient();
         const bucketName = 'bucket'; // Your specified bucket name
         // Sanitize filename to prevent path traversal issues, though Supabase handles this well.
         // Create a unique path for the file to avoid overwrites and ensure organization.
         const supabaseFilePath = `uploads/${Date.now()}-${fileName.replace(/[^a-zA-Z0-9._-]/g, '')}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
             .from(bucketName)
             .upload(supabaseFilePath, fileBuffer, {
                 contentType: fileType,
@@ -36,17 +43,14 @@ export async function POST(request: NextRequest) {
 
         console.log('File uploaded to Supabase:', uploadData?.path);
 
-        // 2. Trigger Inngest job
-        // TODO: Potentially add user ID if available from session/auth
-        const userId = null; // Placeholder
-
+        // 2. Trigger Inngest job with user ID
         await inngest.send({
             name: 'file/analysis.requested', // Event name must match the one in Inngest function
             data: {
                 filePathInBucket: supabaseFilePath, // Use the actual path in the bucket
                 originalFileName: fileName,
                 contentType: fileType,
-                userId: userId,
+                userId: user.id,
             },
         });
 
