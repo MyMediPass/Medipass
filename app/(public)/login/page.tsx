@@ -1,11 +1,4 @@
-"use client"
-
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth } from "@/context/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,57 +7,20 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Logo } from "@/components/logo"
 import { AlertCircle, LockKeyhole, Mail, Check } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { login } from "./actions"
 
-export default function LoginPage() {
-  const router = useRouter()
-  const { signIn } = useAuth()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
-  const [errorMessage, setErrorMessage] = useState("")
-
-  useEffect(() => {
-    // Check for message or error in URL
-    const params = new URLSearchParams(window.location.search)
-    const msgParam = params.get("message")
-    const errorParam = params.get("error")
-
-    if (msgParam) setMessage(msgParam)
-    if (errorParam) setErrorMessage(errorParam)
-  }, [])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-
-    try {
-      const { error: signInError } = await signIn(email, password)
-
-      if (signInError) {
-        setError(signInError.message || "Invalid email or password")
-        return
-      }
-
-      // Successful login will trigger the auth state change in the context
-      // which will redirect to the dashboard
-      router.push("/dashboard")
-    } catch (err) {
-      setError("An unexpected error occurred. Please try again.")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: { message?: string; error?: string }
+}) {
+  const message = searchParams?.message
+  const error = searchParams?.error
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          {/* Use Logo directly without wrapping it in a Link */}
           <Logo size="lg" />
         </div>
 
@@ -81,13 +37,6 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            {errorMessage && (
-              <Alert className="mb-4 bg-destructive/15 text-destructive border-destructive/20">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{errorMessage}</AlertDescription>
-              </Alert>
-            )}
-
             {error && (
               <Alert className="mb-4 bg-destructive/15 text-destructive border-destructive/20">
                 <AlertCircle className="h-4 w-4" />
@@ -95,18 +44,17 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form action={login} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
+                    name="email"
                     type="email"
                     placeholder="name@example.com"
                     className="pl-10"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
@@ -122,10 +70,9 @@ export default function LoginPage() {
                   <LockKeyhole className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
+                    name="password"
                     type="password"
                     className="pl-10"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                 </div>
@@ -134,16 +81,15 @@ export default function LoginPage() {
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  name="remember"
                 />
                 <Label htmlFor="remember" className="text-sm font-normal">
                   Remember me
                 </Label>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in..." : "Sign in"}
+              <Button type="submit" className="w-full">
+                Sign in
               </Button>
             </form>
           </CardContent>
