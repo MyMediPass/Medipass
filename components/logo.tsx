@@ -48,13 +48,5 @@ export function Logo({ size = "md", variant = "default", className, linkWrapper 
     </div>
   )
 
-  if (linkWrapper) {
-    return (
-      <Link href="/" className={cn("flex items-center", className)}>
-        {logoContent}
-      </Link>
-    )
-  }
-
   return <div className={cn("flex items-center", className)}>{logoContent}</div>
 }
