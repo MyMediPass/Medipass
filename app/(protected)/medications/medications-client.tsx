@@ -1,38 +1,139 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Pill, Search, Calendar, Check, Filter, Plus } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { Medication } from "@/lib/medications" // Import the actual Medication type
-import type { User } from "@supabase/supabase-js" // Assuming User type from Supabase
+import type { Medication, StoredMedicationData } from "@/lib/medications"
+import type { User } from "@supabase/supabase-js"
+import { handleAddMedication } from "./actions"
 
 interface MedicationsClientPageProps {
     initialMedications: Medication[];
-    user: User | null; // Or your specific User type from lib/auth
+    user: User | null;
 }
+
+const initialFormState: StoredMedicationData = {
+    name: "",
+    dosage: "",
+    frequency: "",
+    time: "",
+    instructions: "",
+    refillDate: "",
+    status: "active",
+    pillsRemaining: 0,
+    totalPills: 0,
+    prescribedBy: "",
+    startDate: "",
+    purpose: "",
+    endDate: "",
+};
 
 export default function MedicationsClientPage({ initialMedications, user }: MedicationsClientPageProps) {
     const [medications, setMedications] = useState<Medication[]>(initialMedications)
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [newMedicationForm, setNewMedicationForm] = useState<StoredMedicationData>(initialFormState);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [isPending, startTransition] = useTransition();
+    const [alreadyTookSome, setAlreadyTookSome] = useState(false);
 
-    // Update medications if initialMedications prop changes (e.g., after adding a new one and revalidating)
     useEffect(() => {
         setMedications(initialMedications);
     }, [initialMedications]);
 
+    useEffect(() => {
+        if (!alreadyTookSome) {
+            setNewMedicationForm(prev => ({
+                ...prev,
+                pillsRemaining: prev.totalPills
+            }));
+        }
+    }, [newMedicationForm.totalPills, alreadyTookSome]);
+
     if (!user) {
-        // This check might be redundant if the parent server component handles it,
-        // but good for robustness or if this component were used elsewhere.
         return <div>Loading user data...</div>
     }
+
+    const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+        let { name, value, type } = target;
+
+        let processedValue: string | number = value;
+        if (type === 'number' && name !== 'status') {
+            processedValue = value === '' ? 0 : parseInt(value, 10);
+            if (isNaN(processedValue as number)) processedValue = 0;
+        }
+
+        setNewMedicationForm(prev => ({
+            ...prev,
+            [name]: processedValue
+        }));
+    };
+
+    const handleFormSelectChange = (value: string, name: string) => {
+        setNewMedicationForm(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleAlreadyTookSomeChange = (checked: boolean | 'indeterminate') => {
+        const isChecked = !!checked;
+        setAlreadyTookSome(isChecked);
+        if (!isChecked) {
+            setNewMedicationForm(prev => ({
+                ...prev,
+                pillsRemaining: prev.totalPills
+            }));
+        }
+    };
+
+    const openAddDialog = () => {
+        setNewMedicationForm(initialFormState);
+        setAlreadyTookSome(false);
+        setFormError(null);
+        setIsAddDialogOpen(true);
+    };
+
+    const handleAddMedicationSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setFormError(null);
+
+        if (!newMedicationForm.name || !newMedicationForm.startDate) {
+            setFormError("Medication name and start date are required.");
+            return;
+        }
+
+        const dataToSubmit: StoredMedicationData = {
+            ...newMedicationForm,
+            pillsRemaining: Number(newMedicationForm.pillsRemaining) || 0,
+            totalPills: Number(newMedicationForm.totalPills) || 0,
+        };
+
+        if (!alreadyTookSome) {
+            dataToSubmit.pillsRemaining = dataToSubmit.totalPills;
+        }
+
+        startTransition(async () => {
+            const result = await handleAddMedication(dataToSubmit);
+            if (result.success) {
+                setIsAddDialogOpen(false);
+            } else {
+                setFormError(result.error || "An unknown error occurred.");
+            }
+        });
+    };
 
     const filteredMedications = medications.filter((medication) => {
         const matchesSearch =
@@ -47,9 +148,6 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
     const activeMedications = filteredMedications.filter((med) => med.status === "active")
     const completedMedications = filteredMedications.filter((med) => med.status === "completed")
 
-    // getRefillStatusColor and getRefillStatusBadge can remain largely the same
-    // but ensure they use the Medication type correctly
-
     const getRefillStatusBadge = (daysUntilRefill: number, status: string) => {
         if (status === "completed") {
             return (
@@ -58,7 +156,7 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                 </Badge>
             )
         }
-        if (daysUntilRefill === 0 && status === "active") { // Could be 0 if refillDate is N/A or past
+        if (daysUntilRefill === 0 && status === "active") {
             return (
                 <Badge variant="outline" className="bg-yellow-50 text-yellow-700 hover:bg-yellow-50">
                     Check Refill
@@ -86,9 +184,6 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
         )
     }
 
-    // TODO: Implement Add Medication Dialog and form submission logic
-    // TODO: Implement "Take" button functionality (will likely call a Server Action)
-
     return (
         <div className="container px-4 md:px-6 py-6 md:py-10 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -110,13 +205,11 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <label htmlFor="search" className="text-sm font-medium">
-                                        Search
-                                    </label>
+                                    <label htmlFor="search-dialog-input" className="text-sm font-medium">Search</label>
                                     <div className="relative">
                                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
-                                            id="search"
+                                            id="search-dialog-input"
                                             type="search"
                                             placeholder="Search medications..."
                                             className="pl-8"
@@ -126,11 +219,9 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label htmlFor="status-filter" className="text-sm font-medium">
-                                        Status
-                                    </label>
+                                    <label htmlFor="status-filter-select" className="text-sm font-medium">Status</label>
                                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger id="status-filter">
+                                        <SelectTrigger id="status-filter-select">
                                             <SelectValue placeholder="Filter by status" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -148,11 +239,128 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                             </div>
                         </DialogContent>
                     </Dialog>
-                    {/* TODO: Wire up Add Medication Dialog Trigger */}
-                    <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Medication
-                    </Button>
+                    <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={openAddDialog}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Medication
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Add New Medication</DialogTitle>
+                            </DialogHeader>
+                            <form onSubmit={handleAddMedicationSubmit} className="space-y-4 py-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Name <span className="text-red-500">*</span></Label>
+                                        <Input id="name" name="name" value={newMedicationForm.name} onChange={handleFormInputChange} placeholder="e.g., Lisinopril" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="dosage">Dosage</Label>
+                                        <Input id="dosage" name="dosage" value={newMedicationForm.dosage} onChange={handleFormInputChange} placeholder="e.g., 10mg" />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="frequency">Frequency</Label>
+                                        <Input id="frequency" name="frequency" value={newMedicationForm.frequency} onChange={handleFormInputChange} placeholder="e.g., Once daily" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="time">Time</Label>
+                                        <Input id="time" name="time" value={newMedicationForm.time} onChange={handleFormInputChange} placeholder="e.g., 8:00 AM" />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="instructions">Instructions</Label>
+                                    <Textarea id="instructions" name="instructions" value={newMedicationForm.instructions} onChange={handleFormInputChange} placeholder="e.g., Take with breakfast" />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="purpose">Purpose</Label>
+                                        <Input id="purpose" name="purpose" value={newMedicationForm.purpose} onChange={handleFormInputChange} placeholder="e.g., Blood pressure" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="prescribedBy">Prescribed By</Label>
+                                        <Input id="prescribedBy" name="prescribedBy" value={newMedicationForm.prescribedBy} onChange={handleFormInputChange} placeholder="e.g., Dr. Smith" />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="totalPills">Total Pills in Prescription</Label>
+                                        <Input id="totalPills" name="totalPills" type="number" value={newMedicationForm.totalPills || ''} onChange={handleFormInputChange} placeholder="e.g., 30" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pillsRemaining">Pills Currently Remaining</Label>
+                                        <Input
+                                            id="pillsRemaining"
+                                            name="pillsRemaining"
+                                            type="number"
+                                            value={newMedicationForm.pillsRemaining || ''}
+                                            onChange={handleFormInputChange}
+                                            placeholder="e.g., 25"
+                                            disabled={!alreadyTookSome}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                    <Checkbox
+                                        id="alreadyTookSome"
+                                        checked={alreadyTookSome}
+                                        onCheckedChange={handleAlreadyTookSomeChange}
+                                    />
+                                    <Label htmlFor="alreadyTookSome" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        I have already taken some doses / Specify custom remaining amount
+                                    </Label>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="startDate">Start Date <span className="text-red-500">*</span></Label>
+                                        <Input id="startDate" name="startDate" type="date" value={newMedicationForm.startDate} onChange={handleFormInputChange} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="refillDate">Next Refill Date</Label>
+                                        <Input id="refillDate" name="refillDate" type="date" value={newMedicationForm.refillDate} onChange={handleFormInputChange} />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="status">Status</Label>
+                                        <Select name="status" value={newMedicationForm.status} onValueChange={(value) => handleFormSelectChange(value, "status")}>
+                                            <SelectTrigger id="status">
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="active">Active</SelectItem>
+                                                <SelectItem value="completed">Completed</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="endDate">End Date (if completed)</Label>
+                                        <Input id="endDate" name="endDate" type="date" value={newMedicationForm.endDate} onChange={handleFormInputChange} />
+                                    </div>
+                                </div>
+
+                                {formError && <p className="text-sm text-red-500">{formError}</p>}
+
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <DialogClose asChild>
+                                        <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                                    </DialogClose>
+                                    <Button type="submit" disabled={isPending}>
+                                        {isPending ? "Adding..." : "Add Medication"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
@@ -216,7 +424,6 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                                             </div>
 
                                             <div className="mt-3 pt-3 border-t flex justify-end">
-                                                {/* TODO: Implement "Take" button server action call */}
                                                 <Button variant="outline" size="sm" className="h-7 text-xs">
                                                     <Check className="h-3 w-3 mr-1" />
                                                     Take
