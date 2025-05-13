@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation"
 import TestPanel from "@/components/TestPanel"
 import TrendDialog from "@/components/TrendDialog"
 import AIInterpretationDialog from "@/components/AIInterpretationDialog"
+import { toast } from "sonner"
 
 interface TestResult {
   test_name: string
@@ -72,7 +73,6 @@ export default function TestResultsPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
-  const [statusStep, setStatusStep] = useState(0)
   const [currentUploadFilename, setCurrentUploadFilename] = useState<string | null>(null)
   const [newReportId, setNewReportId] = useState<string | null>(null)
   const router = useRouter()
@@ -80,14 +80,6 @@ export default function TestResultsPage() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-
-  const statusMessages = [
-    "Analyzing test results...",
-    "Verifying correctness...",
-    "Extracting data...",
-    "Pondering...",
-    "Almost there..."
-  ]
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -160,63 +152,6 @@ export default function TestResultsPage() {
     fetchData();
   }, [fetchData]);
 
-  const completeAnalysis = useCallback(() => {
-    setTimeout(() => {
-      setStatusMessage("Analysis complete! Click below to view your results.")
-      setIsAnalyzing(false)
-      setNewReportId('222e30f3-0f68-4f2b-85fc-b2a3bb32492f')
-      fetchData();
-    }, 0)
-  }, [fetchData]);
-
-  useEffect(() => {
-    let pollInterval: NodeJS.Timeout
-
-    if (isAnalyzing && currentUploadFilename) {
-      if (currentUploadFilename.toLowerCase().startsWith('zen')) {
-        let mockStep = 0
-        pollInterval = setInterval(() => {
-          mockStep++
-          if (mockStep >= 2) {
-            clearInterval(pollInterval)
-            completeAnalysis()
-          } else {
-            setStatusStep(mockStep % statusMessages.length)
-            setStatusMessage(statusMessages[mockStep % statusMessages.length])
-          }
-        }, 3000)
-        return () => clearInterval(pollInterval);
-      }
-
-      pollInterval = setInterval(async () => {
-        setStatusStep((prev) => (prev + 1) % statusMessages.length)
-        setStatusMessage(statusMessages[statusStep])
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: reports } = await supabase
-          .from('lab_reports')
-          .select('id, original_filename, panels!inner(*)')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-
-        if (reports && reports.length > 0 && reports[0].panels.length > 0) {
-          if (reports[0].original_filename === currentUploadFilename) {
-            setNewReportId(reports[0].id)
-            setIsAnalyzing(false)
-            setStatusMessage("Analysis complete! Click below to view your results.")
-            fetchData();
-            clearInterval(pollInterval);
-          }
-        }
-      }, 3000)
-    }
-    return () => {
-      if (pollInterval) clearInterval(pollInterval)
-    }
-  }, [isAnalyzing, statusStep, currentUploadFilename, supabase, completeAnalysis, fetchData]);
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setUploadedFile(e.target.files[0])
@@ -230,9 +165,8 @@ export default function TestResultsPage() {
     if (!uploadedFile) return
 
     setIsAnalyzing(true)
-    setStatusMessage('Uploading file...')
-    setStatusStep(0)
     setCurrentUploadFilename(uploadedFile.name)
+    setNewReportId(null);
 
     const formData = new FormData()
     formData.append('file', uploadedFile)
@@ -243,16 +177,22 @@ export default function TestResultsPage() {
         body: formData,
       })
       const result = await response.json()
+
       if (!response.ok) {
-        throw new Error(result.error || 'Upload failed')
+        throw new Error(result.error || 'Upload and processing failed')
       }
-      setStatusMessage(`File uploaded: ${result.fileName}. Starting analysis...`)
+
+      toast.success(`Report "${result.fileName}" processed successfully!`);
+      setNewReportId(result.reportId);
+      fetchData();
+      setUploadedFile(null);
+      setCurrentUploadFilename(null);
+
     } catch (error: any) {
       console.error('Analysis request failed:', error)
-      setTimeout(() => {
-        setStatusMessage(`Error: ${error.message}`)
-        setIsAnalyzing(false)
-      }, 0)
+      toast.error(error.message || 'An unknown error occurred.');
+    } finally {
+      setIsAnalyzing(false)
     }
   }
 
@@ -447,19 +387,20 @@ export default function TestResultsPage() {
                 </div>
               )}
 
-              {isAnalyzing && (
-                <div className="flex flex-col items-center justify-center py-6 space-y-4">
-                  <div className="relative">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  </div>
-                  <p className="text-center font-medium">{statusMessage}</p>
-                  <div className="w-full max-w-xs bg-secondary h-2 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary animate-pulse transition-all"
-                      style={{ width: `${(statusStep + 1) * 20}%` }}
-                    ></div>
-                  </div>
-                </div>
+              {isAnalyzing && currentUploadFilename && (
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Processing: {currentUploadFilename}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Your lab report is being uploaded and analyzed. Please wait a moment...
+                    </p>
+                  </CardContent>
+                </Card>
               )}
 
               {newReportId && !isAnalyzing && (
@@ -531,15 +472,25 @@ export default function TestResultsPage() {
                       <div>
                         <CardTitle className="text-lg flex items-center">
                           <FileText className="h-5 w-5 mr-2 text-primary" />
-                          {report.original_filename}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium truncate group-hover:underline">
+                                {report.original_filename}
+                                {report.id === newReportId && (
+                                  <Badge variant="outline" className="ml-2 bg-green-100 text-green-700 border-green-300">New</Badge>
+                                )}
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                              <Clock className="h-3 w-3 mr-1.5" />
+                              Uploaded on {new Date(report.created_at).toLocaleDateString()} • Status:
+                              <Badge variant={report.status === 'completed' || report.status === 'processed' ? 'default' : 'outline'} className="ml-1.5 text-xs">
+                                {report.status}
+                              </Badge>
+                            </div>
+                          </div>
                         </CardTitle>
-                        <div className="text-xs text-muted-foreground mt-1 flex items-center">
-                          <Clock className="h-3 w-3 mr-1.5" />
-                          Uploaded on {new Date(report.created_at).toLocaleDateString()} • Status:
-                          <Badge variant={report.status === 'completed' || report.status === 'processed' ? 'default' : 'outline'} className="ml-1.5 text-xs">
-                            {report.status}
-                          </Badge>
-                        </div>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => router.push(`/test-results/${report.id}`)}>
                         View Report <ChevronRight className="h-4 w-4 ml-1" />
