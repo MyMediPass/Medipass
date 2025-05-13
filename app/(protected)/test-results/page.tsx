@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, Search, Filter, ChevronRight, TrendingUp, Brain, Loader2, ExternalLink, Plus, FileUp, Check } from "lucide-react"
+import { FileText, Search, Filter, ChevronRight, TrendingUp, Brain, Loader2, ExternalLink, Plus, FileUp, Check, Clock } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Dialog,
@@ -16,13 +16,14 @@ import {
   DialogClose,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { createBrowserClient } from "@supabase/ssr"
 import { useRouter } from "next/navigation"
 import TestPanel from "@/components/TestPanel"
 import TrendDialog from "@/components/TrendDialog"
 import AIInterpretationDialog from "@/components/AIInterpretationDialog"
-import { Separator } from "@/components/ui/separator"
 
 interface TestResult {
   test_name: string
@@ -44,6 +45,14 @@ interface Panel {
   report_created_at: string
 }
 
+interface LabReportEntry {
+  id: string;
+  created_at: string;
+  original_filename: string;
+  status: string;
+  panels: Array<{ name: string; lab_name: string | null }>;
+}
+
 interface HistoricalDataPoint {
   created_at: string
   result_value: string | number
@@ -51,6 +60,7 @@ interface HistoricalDataPoint {
 
 export default function TestResultsPage() {
   const [panels, setPanels] = useState<Panel[]>([])
+  const [labReports, setLabReports] = useState<LabReportEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showTrendDialog, setShowTrendDialog] = useState(false)
   const [showAIDialog, setShowAIDialog] = useState(false)
@@ -79,92 +89,108 @@ export default function TestResultsPage() {
     "Almost there..."
   ]
 
-  // Complete analysis and set final state
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const [panelsResponse, labReportsResponse] = await Promise.all([
+        supabase
+          .from('panels')
+          .select(`
+            id,
+            name,
+            reported_at,
+            lab_name,
+            status,
+            test_results (
+              test_name,
+              result_value,
+              units,
+              flag,
+              reference_range,
+              is_calculated
+            ),
+            report_id,
+            lab_reports!inner (
+              created_at
+            )
+          `)
+          .order('reported_at', { ascending: false }),
+        user ? supabase
+          .from('lab_reports')
+          .select(`
+            id,
+            created_at,
+            original_filename,
+            status,
+            panels (
+              name,
+              lab_name
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }) : Promise.resolve({ data: [], error: null })
+      ]);
+
+      if (panelsResponse.error) throw panelsResponse.error;
+      const transformedPanels: Panel[] = (panelsResponse.data as any[]).map(panel => ({
+        id: panel.id,
+        name: panel.name,
+        reported_at: panel.reported_at,
+        lab_name: panel.lab_name,
+        status: panel.status,
+        test_results: panel.test_results,
+        report_id: panel.report_id,
+        report_created_at: panel.lab_reports?.created_at || ''
+      }));
+      setPanels(transformedPanels);
+
+      if (labReportsResponse.error) throw labReportsResponse.error;
+      setLabReports((labReportsResponse.data as LabReportEntry[]) || []);
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const completeAnalysis = useCallback(() => {
-    // Use a timeout to ensure all state updates happen in a single batch
     setTimeout(() => {
       setStatusMessage("Analysis complete! Click below to view your results.")
       setIsAnalyzing(false)
       setNewReportId('222e30f3-0f68-4f2b-85fc-b2a3bb32492f')
-      // Refresh panels
-      const fetchNewPanels = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('panels')
-            .select(`
-              id,
-              name,
-              reported_at,
-              lab_name,
-              status,
-              test_results (
-                test_name,
-                result_value,
-                units,
-                flag,
-                reference_range,
-                is_calculated
-              ),
-              report_id,
-              lab_reports!inner (
-                created_at
-              )
-            `)
-            .order('reported_at', { ascending: false })
-
-          if (error) throw error
-
-          // Transform the data to include report_created_at
-          const transformedPanels: Panel[] = (data as any[]).map(panel => ({
-            id: panel.id,
-            name: panel.name,
-            reported_at: panel.reported_at,
-            lab_name: panel.lab_name,
-            status: panel.status,
-            test_results: panel.test_results,
-            report_id: panel.report_id,
-            report_created_at: panel.lab_reports?.created_at || ''
-          }))
-
-          setPanels(transformedPanels)
-        } catch (error) {
-          console.error('Error fetching panels:', error)
-        }
-      }
-      fetchNewPanels()
+      fetchData();
     }, 0)
-  }, [supabase])
+  }, [fetchData]);
 
   useEffect(() => {
     let pollInterval: NodeJS.Timeout
 
     if (isAnalyzing && currentUploadFilename) {
-      // Special handling for files starting with "zen"
       if (currentUploadFilename.toLowerCase().startsWith('zen')) {
         let mockStep = 0
         pollInterval = setInterval(() => {
           mockStep++
-
           if (mockStep >= 2) {
-            // Immediately complete the analysis
             clearInterval(pollInterval)
             completeAnalysis()
           } else {
-            // Update status during the mock analysis
             setStatusStep(mockStep % statusMessages.length)
             setStatusMessage(statusMessages[mockStep % statusMessages.length])
           }
         }, 3000)
-        return
+        return () => clearInterval(pollInterval);
       }
 
-      // Regular polling logic for non-zen files
       pollInterval = setInterval(async () => {
-        // Update status message
         setStatusStep((prev) => (prev + 1) % statusMessages.length)
         setStatusMessage(statusMessages[statusStep])
-
-        // Check for new report
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
@@ -176,66 +202,20 @@ export default function TestResultsPage() {
           .limit(1)
 
         if (reports && reports.length > 0 && reports[0].panels.length > 0) {
-          // Check if this is the report we just uploaded
           if (reports[0].original_filename === currentUploadFilename) {
             setNewReportId(reports[0].id)
             setIsAnalyzing(false)
             setStatusMessage("Analysis complete! Click below to view your results.")
-            // Refresh panels data
-            const fetchUpdatedPanels = async () => {
-              try {
-                const { data, error } = await supabase
-                  .from('panels')
-                  .select(`
-                    id,
-                    name,
-                    reported_at,
-                    lab_name,
-                    status,
-                    test_results (
-                      test_name,
-                      result_value,
-                      units,
-                      flag,
-                      reference_range,
-                      is_calculated
-                    ),
-                    report_id,
-                    lab_reports!inner (
-                      created_at
-                    )
-                  `)
-                  .order('reported_at', { ascending: false })
-
-                if (error) throw error
-
-                // Transform the data to include report_created_at
-                const transformedPanels: Panel[] = (data as any[]).map(panel => ({
-                  id: panel.id,
-                  name: panel.name,
-                  reported_at: panel.reported_at,
-                  lab_name: panel.lab_name,
-                  status: panel.status,
-                  test_results: panel.test_results,
-                  report_id: panel.report_id,
-                  report_created_at: panel.lab_reports?.created_at || ''
-                }))
-
-                setPanels(transformedPanels)
-              } catch (error) {
-                console.error('Error fetching panels:', error)
-              }
-            }
-            fetchUpdatedPanels()
+            fetchData();
+            clearInterval(pollInterval);
           }
         }
       }, 3000)
     }
-
     return () => {
       if (pollInterval) clearInterval(pollInterval)
     }
-  }, [isAnalyzing, statusStep, currentUploadFilename, supabase])
+  }, [isAnalyzing, statusStep, currentUploadFilename, supabase, completeAnalysis, fetchData]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -262,74 +242,19 @@ export default function TestResultsPage() {
         method: 'POST',
         body: formData,
       })
-
       const result = await response.json()
-
       if (!response.ok) {
         throw new Error(result.error || 'Upload failed')
       }
-
       setStatusMessage(`File uploaded: ${result.fileName}. Starting analysis...`)
     } catch (error: any) {
       console.error('Analysis request failed:', error)
-      // Set both states in a single update
       setTimeout(() => {
         setStatusMessage(`Error: ${error.message}`)
         setIsAnalyzing(false)
       }, 0)
     }
   }
-
-  useEffect(() => {
-    const fetchPanels = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('panels')
-          .select(`
-            id,
-            name,
-            reported_at,
-            lab_name,
-            status,
-            test_results (
-              test_name,
-              result_value,
-              units,
-              flag,
-              reference_range,
-              is_calculated
-            ),
-            report_id,
-            lab_reports!inner (
-              created_at
-            )
-          `)
-          .order('reported_at', { ascending: false })
-
-        if (error) throw error
-
-        // Transform the data to include report_created_at
-        const transformedPanels: Panel[] = (data as any[]).map(panel => ({
-          id: panel.id,
-          name: panel.name,
-          reported_at: panel.reported_at,
-          lab_name: panel.lab_name,
-          status: panel.status,
-          test_results: panel.test_results,
-          report_id: panel.report_id,
-          report_created_at: panel.lab_reports?.created_at || ''
-        }))
-
-        setPanels(transformedPanels)
-      } catch (error) {
-        console.error('Error fetching panels:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchPanels()
-  }, [])
 
   const togglePanel = (panelId: string) => {
     setExpandedPanels(prev => {
@@ -405,13 +330,11 @@ export default function TestResultsPage() {
 
       if (error) throw error
 
-      // Format the actual data
       const formattedData = (historicalData as HistoricalDataPoint[]).map(item => ({
         date: new Date(item.created_at).toLocaleDateString(),
         value: parseFloat(item.result_value as string)
       }))
 
-      // If we only have 1 data point, generate synthetic historical data
       if (formattedData.length <= 1) {
         const syntheticData = generateSyntheticHistoricalData(formattedData[0]);
         setSelectedResultData([...syntheticData, ...formattedData]);
@@ -427,7 +350,6 @@ export default function TestResultsPage() {
     }
   }
 
-  // Function to generate synthetic historical data points
   const generateSyntheticHistoricalData = (actualDataPoint: { date: string, value: number }) => {
     if (!actualDataPoint) return [];
 
@@ -435,37 +357,22 @@ export default function TestResultsPage() {
     const actualDate = new Date(actualDataPoint.date);
     const actualValue = actualDataPoint.value;
 
-    // Generate 2-3 synthetic points from past dates
     for (let i = 1; i <= Math.floor(Math.random() * 2) + 2; i++) {
       const pastDate = new Date(actualDate);
-      // Move back by random number of days (30-90 days)
       pastDate.setDate(pastDate.getDate() - (30 + Math.floor(Math.random() * 60)));
-
-      // Generate a value that's within ±15% of the actual value
-      const randomVariation = (Math.random() * 0.3) - 0.15; // -15% to +15%
+      const randomVariation = (Math.random() * 0.3) - 0.15;
       const syntheticValue = actualValue * (1 + randomVariation);
-
       syntheticData.push({
         date: pastDate.toLocaleDateString(),
         value: parseFloat(syntheticValue.toFixed(2)),
-        isSynthetic: true // Optional flag to distinguish synthetic data
+        isSynthetic: true
       });
     }
-
-    // Sort by date (oldest first)
     return syntheticData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   const handleShowAIInterpretation = async (testName: string) => {
     try {
-      // const { data: interpretation, error } = await supabase
-      //   .from('ai_interpretations')
-      //   .select('interpretation')
-      //   .eq('test_name', testName)
-      //   .single()
-
-      // if (error) throw error
-
       setSelectedResultName(testName)
       setSelectedResultInterpretation("Interpretation to be built")
       setShowAIDialog(true)
@@ -562,7 +469,7 @@ export default function TestResultsPage() {
                   </div>
                   <p className="text-center font-medium">{statusMessage}</p>
                   <DialogClose asChild>
-                    <Button>View Results</Button>
+                    <Button onClick={() => router.push(`/test-results/${newReportId}`)}>View Results</Button>
                   </DialogClose>
                 </div>
               )}
@@ -578,34 +485,93 @@ export default function TestResultsPage() {
         </Dialog>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-8rem)]">
-        <div className="space-y-4 pr-4">
-          {panels.map((panel) => (
-            <TestPanel
-              key={panel.id}
-              id={panel.id}
-              name={panel.name}
-              reported_at={panel.reported_at}
-              lab_name={panel.lab_name}
-              status={panel.status}
-              test_results={panel.test_results}
-              expanded={expandedPanels.has(panel.id)}
-              onToggle={() => togglePanel(panel.id)}
-              getStatusIndicator={getStatusIndicator}
-              onShowTrend={handleShowTrend}
-              onShowAIInterpretation={handleShowAIInterpretation}
-            />
-          ))}
+      <Tabs defaultValue="panels" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="panels">Test Panels</TabsTrigger>
+          <TabsTrigger value="reports">Lab Reports</TabsTrigger>
+        </TabsList>
 
-          {panels.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <FileText className="h-8 w-8 text-muted-foreground mb-4" />
-              <h3 className="font-medium">No test results found</h3>
-              <p className="text-sm text-muted-foreground mt-1">Upload a lab report to see your results</p>
+        <TabsContent value="panels">
+          <ScrollArea className="h-[calc(100vh-12rem)]">
+            <div className="space-y-4 pr-4">
+              {panels.map((panel) => (
+                <TestPanel
+                  key={panel.id}
+                  id={panel.id}
+                  name={panel.name}
+                  reported_at={panel.reported_at}
+                  lab_name={panel.lab_name}
+                  status={panel.status}
+                  test_results={panel.test_results}
+                  expanded={expandedPanels.has(panel.id)}
+                  onToggle={() => togglePanel(panel.id)}
+                  getStatusIndicator={getStatusIndicator}
+                  onShowTrend={handleShowTrend}
+                  onShowAIInterpretation={handleShowAIInterpretation}
+                />
+              ))}
+              {panels.length === 0 && !loading && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+                  <h3 className="font-medium">No test panels found</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Upload a lab report to see your results and panels.</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </ScrollArea>
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <ScrollArea className="h-[calc(100vh-12rem)]">
+            <div className="space-y-4 pr-4">
+              {labReports.map((report) => (
+                <Card key={report.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg flex items-center">
+                          <FileText className="h-5 w-5 mr-2 text-primary" />
+                          {report.original_filename}
+                        </CardTitle>
+                        <div className="text-xs text-muted-foreground mt-1 flex items-center">
+                          <Clock className="h-3 w-3 mr-1.5" />
+                          Uploaded on {new Date(report.created_at).toLocaleDateString()} • Status:
+                          <Badge variant={report.status === 'completed' || report.status === 'processed' ? 'default' : 'outline'} className="ml-1.5 text-xs">
+                            {report.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => router.push(`/test-results/${report.id}`)}>
+                        View Report <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  {report.panels && report.panels.length > 0 && (
+                    <CardContent>
+                      <h4 className="text-sm font-medium mb-2">Panels in this report:</h4>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                        {report.panels.slice(0, 5).map((panel, index) => (
+                          <li key={index}>{panel.name}{panel.lab_name ? ` (${panel.lab_name})` : ''}</li>
+                        ))}
+                        {report.panels.length > 5 && (
+                          <li className="text-xs">...and {report.panels.length - 5} more.</li>
+                        )}
+                      </ul>
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
+              {labReports.length === 0 && !loading && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <FileText className="h-8 w-8 text-muted-foreground mb-4" />
+                  <h3 className="font-medium">No lab reports found</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Upload a lab report to see it listed here.</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
 
       <TrendDialog
         open={showTrendDialog}

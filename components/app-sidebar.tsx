@@ -76,7 +76,7 @@ const primaryNavConfig: NavItemGroup[] = [
   {
     groupTitle: "Records",
     items: [
-      { name: "Lab Upload", href: "/lab-upload", icon: FileText },
+      // { name: "Lab Upload", href: "/lab-upload", icon: FileText },
       { name: "Test Results", href: "/test-results", icon: FileText },
       { name: "Medications", href: "/medications", icon: Pill },
       { name: "Past Visits", href: "/visits", icon: Calendar },
@@ -101,7 +101,7 @@ const primaryNavConfig: NavItemGroup[] = [
   {
     groupTitle: "Communication",
     items: [
-      { name: "Chat", href: "/chat", icon: MessageSquare },
+      // { name: "Chat", href: "/chat", icon: MessageSquare },
       { name: "Chat History", href: "/chat-history", icon: MessageSquare }
     ],
   },
