@@ -9,7 +9,7 @@ import { FileUp, FileText, Check, Clock, Loader2 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
 
 interface LabReport {
@@ -33,6 +33,8 @@ export default function LabUploadPage() {
   const [loadingReports, setLoadingReports] = useState(true)
   const [currentUploadFilename, setCurrentUploadFilename] = useState<string | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentTab = searchParams.get('t') || 'upload'
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -157,6 +159,12 @@ export default function LabUploadPage() {
     }
   }
 
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('t', value)
+    router.push(`?${params.toString()}`)
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -164,7 +172,11 @@ export default function LabUploadPage() {
         <p className="text-muted-foreground">Upload your lab reports and get AI-powered analysis</p>
       </div>
 
-      <Tabs defaultValue="upload" className="space-y-4">
+      <Tabs
+        value={currentTab}
+        onValueChange={handleTabChange}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="upload">Upload New Lab</TabsTrigger>
           <TabsTrigger value="previous">Previous Labs</TabsTrigger>
