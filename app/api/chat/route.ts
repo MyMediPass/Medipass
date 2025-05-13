@@ -1,6 +1,7 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { streamText } from 'ai';
 import { buildLLMContext } from '@/lib/llm-context';
+import { z } from 'zod';
 
 export const maxDuration = 30;
 
@@ -43,6 +44,13 @@ Response Preferences:
             },
             ...messages,
         ],
+        tools: {
+            uploadLabReport: {
+                description:
+                    'If the user has uploaded a lab report, you must use this tool! It will trigger processing in the background, which is very useful. ON the other hand, if the user has uploaded any other kind of document, like a picture, do NOT use this tool! Lab reports often have panels, date the lab report was run, etc.',
+                parameters: z.object({}),
+            },
+        },
     });
 
     return result.toDataStreamResponse();

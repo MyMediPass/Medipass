@@ -11,7 +11,15 @@ interface FileAnalysisPayload {
 }
 
 export const fileAnalysisRequested = inngest.createFunction(
-    { id: 'file-analysis-requested', name: 'File Analysis Requested' },
+    {
+        id: 'file-analysis-requested', name: 'File Analysis Requested',
+        timeouts: {
+            // If the run takes longer than 10s to start, cancel the run.
+            start: "10s",
+            // And if the run takes longer than 50s to finish after starting, cancel the run.
+            finish: "50s",
+        }
+    },
     { event: 'file/analysis.requested' },
     async ({ event, step }) => {
         const { filePathInBucket, originalFileName, contentType, userId } = event.data as FileAnalysisPayload;

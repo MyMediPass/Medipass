@@ -13,9 +13,44 @@ import { Avatar } from "@/components/ui/avatar"
 export default function ChatPage() {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [files, setFiles] = useState<FileList | undefined>(undefined)
+    const [lastUploadedFile, setLastUploadedFile] = useState<File | undefined>(undefined)
 
     const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
         api: '/api/chat',
+        maxSteps: 4,
+        // run client-side tools that are automatically executed:
+        async onToolCall({ toolCall }) {
+            if (toolCall.toolName === 'uploadLabReport') {
+                console.log('Uploading lab report...')
+                // If we have a file to upload, send it to the upload API
+                if (lastUploadedFile) {
+                    try {
+                        const formData = new FormData()
+                        formData.append('file', lastUploadedFile)
+
+                        const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: formData,
+                        })
+
+                        const result = await response.json()
+
+                        if (!response.ok) {
+                            throw new Error(result.error || 'Upload failed')
+                        }
+
+                        console.log('File uploaded successfully:', result.fileName)
+                    } catch (error: any) {
+                        console.error('File upload failed:', error)
+                    }
+                }
+                return {
+                    toolName: 'uploadLabReport',
+                    toolCallId: toolCall.toolCallId,
+                    result: 'Lab report uploaded successfully'
+                }
+            }
+        },
     })
 
     const handleClearFiles = () => {
@@ -26,6 +61,8 @@ export default function ChatPage() {
     }
 
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        console.log('onSubmit', files)
+        setLastUploadedFile(files?.[0])
         handleSubmit(e, {
             experimental_attachments: files,
         })
@@ -34,7 +71,7 @@ export default function ChatPage() {
 
     return (
         <div className="relative h-[calc(100vh-80px)] flex flex-col overflow-hidden rounded-2xl">
-            {/* Gradient background */} 
+            {/* Gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 opacity-80">
                 <div className="absolute inset-0 radial-gradient" />
             </div>

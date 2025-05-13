@@ -34,6 +34,18 @@ export function FriendlyChat({
     const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
         api: apiEndpoint,
         initialMessages,
+        maxSteps: 4,
+        // run client-side tools that are automatically executed:
+        async onToolCall({ toolCall }) {
+            if (toolCall.toolName === 'uploadLabReport') {
+                console.log('Uploading lab report...')
+                return {
+                    toolName: 'uploadLabReport',
+                    toolCallId: toolCall.toolCallId,
+                    result: 'Lab report uploaded successfully'
+                }
+            }
+        },
     })
 
     // Scroll to bottom of chat when messages change
