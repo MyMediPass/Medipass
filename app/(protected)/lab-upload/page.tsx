@@ -31,6 +31,7 @@ export default function LabUploadPage() {
   const [newReportId, setNewReportId] = useState<string | null>(null)
   const [previousReports, setPreviousReports] = useState<LabReport[]>([])
   const [loadingReports, setLoadingReports] = useState(true)
+  const [currentUploadFilename, setCurrentUploadFilename] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,7 +49,7 @@ export default function LabUploadPage() {
   useEffect(() => {
     let pollInterval: NodeJS.Timeout
 
-    if (isAnalyzing) {
+    if (isAnalyzing && currentUploadFilename) {
       pollInterval = setInterval(async () => {
         // Update status message
         setStatusStep((prev) => (prev + 1) % statusMessages.length)
@@ -60,17 +61,20 @@ export default function LabUploadPage() {
 
         const { data: reports } = await supabase
           .from('lab_reports')
-          .select('id, panels!inner(*)')
+          .select('id, original_filename, panels!inner(*)')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(1)
 
         if (reports && reports.length > 0 && reports[0].panels.length > 0) {
-          setNewReportId(reports[0].id)
-          setIsAnalyzing(false)
-          setStatusMessage("Analysis complete! Click below to view your results.")
-          // Refresh the list of reports
-          fetchReports()
+          // Check if this is the report we just uploaded
+          if (reports[0].original_filename === currentUploadFilename) {
+            setNewReportId(reports[0].id)
+            setIsAnalyzing(false)
+            setStatusMessage("Analysis complete! Click below to view your results.")
+            // Refresh the list of reports
+            fetchReports()
+          }
         }
       }, 3000)
     }
@@ -78,7 +82,7 @@ export default function LabUploadPage() {
     return () => {
       if (pollInterval) clearInterval(pollInterval)
     }
-  }, [isAnalyzing, statusStep])
+  }, [isAnalyzing, statusStep, currentUploadFilename])
 
   useEffect(() => {
     fetchReports()
@@ -118,6 +122,7 @@ export default function LabUploadPage() {
       setUploadedFile(e.target.files[0])
       setStatusMessage(null)
       setNewReportId(null)
+      setCurrentUploadFilename(null)
     }
   }
 
@@ -127,6 +132,7 @@ export default function LabUploadPage() {
     setIsAnalyzing(true)
     setStatusMessage('Uploading file...')
     setStatusStep(0)
+    setCurrentUploadFilename(uploadedFile.name)
 
     const formData = new FormData()
     formData.append('file', uploadedFile)
