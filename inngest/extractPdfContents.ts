@@ -103,6 +103,7 @@ export interface ExtractedPdfData {
             test: string;
             result: string | number;
             flag?: string;
+            units?: string;
             reference_range: string;
             note?: string;
         }>;
