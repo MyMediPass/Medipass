@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Medication, StoredMedicationData } from "@/lib/medications"
 import type { User } from "@supabase/supabase-js"
-import { handleAddMedication } from "./actions"
+import { handleAddMedication, handleTakeMedication } from "./actions"
 
 interface MedicationsClientPageProps {
     initialMedications: Medication[];
@@ -45,8 +45,10 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newMedicationForm, setNewMedicationForm] = useState<StoredMedicationData>(initialFormState);
     const [formError, setFormError] = useState<string | null>(null);
-    const [isPending, startTransition] = useTransition();
+    const [isPendingAdd, startAddTransition] = useTransition();
     const [alreadyTookSome, setAlreadyTookSome] = useState(false);
+    const [isPendingTake, startTakeTransition] = useTransition();
+    const [takeError, setTakeError] = useState<Record<number, string | null>>({});
 
     useEffect(() => {
         setMedications(initialMedications);
@@ -96,6 +98,8 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                 ...prev,
                 pillsRemaining: prev.totalPills
             }));
+        } else {
+            setNewMedicationForm(prev => ({ ...prev, pillsRemaining: prev.pillsRemaining }));
         }
     };
 
@@ -125,12 +129,24 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
             dataToSubmit.pillsRemaining = dataToSubmit.totalPills;
         }
 
-        startTransition(async () => {
+        startAddTransition(async () => {
             const result = await handleAddMedication(dataToSubmit);
             if (result.success) {
                 setIsAddDialogOpen(false);
             } else {
                 setFormError(result.error || "An unknown error occurred.");
+            }
+        });
+    };
+
+    const onTakeMedication = (medicationId: number, currentPills: number) => {
+        setTakeError(prev => ({ ...prev, [medicationId]: null }));
+        if (currentPills <= 0) return;
+
+        startTakeTransition(async () => {
+            const result = await handleTakeMedication(medicationId);
+            if (!result.success) {
+                setTakeError(prev => ({ ...prev, [medicationId]: result.error || "Failed to take medication." }));
             }
         });
     };
@@ -354,8 +370,8 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                                     <DialogClose asChild>
                                         <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
                                     </DialogClose>
-                                    <Button type="submit" disabled={isPending}>
-                                        {isPending ? "Adding..." : "Add Medication"}
+                                    <Button type="submit" disabled={isPendingAdd}>
+                                        {isPendingAdd ? "Adding..." : "Add Medication"}
                                     </Button>
                                 </div>
                             </form>
@@ -422,11 +438,19 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
                                                 </div>
                                                 {getRefillStatusBadge(medication.daysUntilRefill, medication.status)}
                                             </div>
-
+                                            {takeError[medication.id] && (
+                                                <p className="text-xs text-red-500 mt-1">{takeError[medication.id]}</p>
+                                            )}
                                             <div className="mt-3 pt-3 border-t flex justify-end">
-                                                <Button variant="outline" size="sm" className="h-7 text-xs">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => onTakeMedication(medication.id, medication.pillsRemaining)}
+                                                    disabled={isPendingTake || medication.pillsRemaining <= 0}
+                                                >
                                                     <Check className="h-3 w-3 mr-1" />
-                                                    Take
+                                                    {isPendingTake ? "Processing..." : "Take"}
                                                 </Button>
                                             </div>
                                         </div>
