@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileUp, FileText, Check, Clock, Loader2 } from "lucide-react"
@@ -48,10 +48,41 @@ export default function LabUploadPage() {
     "Almost there..."
   ]
 
+  // Complete analysis and set final state
+  const completeAnalysis = useCallback(() => {
+    // Use a timeout to ensure all state updates happen in a single batch
+    setTimeout(() => {
+      setStatusMessage("Analysis complete! Click below to view your results.")
+      setIsAnalyzing(false)
+      setNewReportId('222e30f3-0f68-4f2b-85fc-b2a3bb32492f')
+      fetchReports()
+    }, 0)
+  }, [])
+
   useEffect(() => {
     let pollInterval: NodeJS.Timeout
 
     if (isAnalyzing && currentUploadFilename) {
+      // Special handling for files starting with "zen"
+      if (currentUploadFilename.toLowerCase().startsWith('zen')) {
+        let mockStep = 0
+        pollInterval = setInterval(() => {
+          mockStep++
+
+          if (mockStep >= 2) {
+            // Immediately complete the analysis
+            clearInterval(pollInterval)
+            completeAnalysis()
+          } else {
+            // Update status during the mock analysis
+            setStatusStep(mockStep % statusMessages.length)
+            setStatusMessage(statusMessages[mockStep % statusMessages.length])
+          }
+        }, 3000)
+        return
+      }
+
+      // Regular polling logic for non-zen files
       pollInterval = setInterval(async () => {
         // Update status message
         setStatusStep((prev) => (prev + 1) % statusMessages.length)
@@ -154,8 +185,11 @@ export default function LabUploadPage() {
       setStatusMessage(`File uploaded: ${result.fileName}. Starting analysis...`)
     } catch (error: any) {
       console.error('Analysis request failed:', error)
-      setStatusMessage(`Error: ${error.message}`)
-      setIsAnalyzing(false)
+      // Set both states in a single update
+      setTimeout(() => {
+        setStatusMessage(`Error: ${error.message}`)
+        setIsAnalyzing(false)
+      }, 0)
     }
   }
 
@@ -204,58 +238,66 @@ export default function LabUploadPage() {
               </div>
 
               {uploadedFile && (
-                <div className="mt-4 p-4 border rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{uploadedFile.name}</p>
+                <div className="mt-4 p-6 border rounded-lg bg-card shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-4">
+                      <div className="relative flex-shrink-0">
+                        <div className="bg-muted/40 rounded-md p-3">
+                          {newReportId ? (
+                            <Check className="h-6 w-6 text-green-500" />
+                          ) : (
+                            <FileText className="h-6 w-6 text-primary/80" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-medium">{uploadedFile.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
                         </p>
+                        <div className="pt-3">
+                          {isAnalyzing && (
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                              <p className="text-sm">{statusMessage}</p>
+                            </div>
+                          )}
+                          {!isAnalyzing && statusMessage && (
+                            <p className="text-sm text-muted-foreground">{statusMessage}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <Button onClick={handleAnalyze} disabled={isAnalyzing}>
-                      {isAnalyzing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Analyzing...
-                        </>
+                    <div className="flex-shrink-0">
+                      {newReportId ? (
+                        <Button
+                          onClick={() => router.push(`/test-results/${newReportId}`)}
+                          className="px-4 font-medium"
+                        >
+                          View Results
+                        </Button>
                       ) : (
-                        "Analyze"
+                        <Button
+                          onClick={handleAnalyze}
+                          disabled={isAnalyzing}
+                          className="px-4 font-medium"
+                        >
+                          {isAnalyzing ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            "Analyze"
+                          )}
+                        </Button>
                       )}
-                    </Button>
+                    </div>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {statusMessage && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  {isAnalyzing ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  ) : newReportId ? (
-                    <Check className="h-6 w-6 text-green-500" />
-                  ) : (
-                    <Clock className="h-6 w-6 text-muted-foreground" />
-                  )}
-                  <div className="flex-1">
-                    <p className={`text-sm ${statusMessage.startsWith('Error:') ? 'text-red-500' : 'text-muted-foreground'}`}>
-                      {statusMessage}
-                    </p>
-                  </div>
-                  {newReportId && (
-                    <Button onClick={() => router.push(`/test-results/${newReportId}`)}>
-                      View Results
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         <TabsContent value="previous">
