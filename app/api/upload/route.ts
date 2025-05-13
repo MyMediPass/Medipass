@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
                 .limit(1);
             if (findPatientError) throw new Error(`Failed to search for patient: ${findPatientError.message}`);
             if (existingPatients && existingPatients.length > 0) {
-                patientId = existingPatients[0].id;
+                patientId = existingPatients[0].id as string;
             } else {
                 const { data: newPatient, error: insertPatientError } = await supabase
                     .from('patients')
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
                     .select('id')
                     .single();
                 if (insertPatientError) throw new Error(`Failed to insert patient: ${insertPatientError.message}`);
-                if (newPatient) patientId = newPatient.id;
+                if (newPatient) patientId = (newPatient as { id: string }).id;
             }
         }
 
@@ -106,7 +106,8 @@ export async function POST(request: NextRequest) {
             .select('id')
             .single();
         if (insertLabReportError) throw new Error(`Failed to insert lab_report: ${insertLabReportError.message}`);
-        const reportId = labReport?.id;
+        if (!labReport) throw new Error('Lab report data is null after insertion attempt.');
+        const reportId = (labReport as { id: string }).id;
 
         // Insert panels
         if (Array.isArray(extractedData.panels)) {
@@ -123,7 +124,8 @@ export async function POST(request: NextRequest) {
                     .select('id')
                     .single();
                 if (insertPanelError) throw new Error(`Failed to insert panel: ${insertPanelError.message}`);
-                const panelId = panelRow?.id;
+                if (!panelRow) throw new Error('Panel data is null after insertion attempt.');
+                const panelId = (panelRow as { id: string }).id;
 
                 // Insert test_results
                 if (Array.isArray(panel.results)) {
