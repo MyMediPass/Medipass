@@ -43,6 +43,30 @@ import { Label } from "@/components/ui/label"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
 import { Badge } from "@/components/ui/badge"
 
+// Type definitions for historicalData and aiInterpretations
+type BloodPressureData = { date: string; systolic: number; diastolic: number }[];
+type SingleValueData = { date: string; value: number }[];
+
+interface HistoricalDataType {
+  "Blood Pressure": BloodPressureData;
+  "Heart Rate": SingleValueData;
+  "Body Temperature": SingleValueData;
+  "Blood Glucose": SingleValueData;
+  "Oxygen Saturation": SingleValueData;
+  Weight: SingleValueData;
+  BMI: SingleValueData;
+}
+
+interface AIInterpretationsType {
+  "Blood Pressure": string;
+  "Heart Rate": string;
+  "Body Temperature": string;
+  "Blood Glucose": string;
+  "Oxygen Saturation": string;
+  Weight: string;
+  BMI: string;
+}
+
 // Define vital types and their icons
 const vitalTypes = {
   "blood-pressure": {
@@ -235,8 +259,10 @@ export default function HealthVitalsPage() {
   ]
 
   // Historical data for trends
-  const historicalData = {
+  const historicalData: HistoricalDataType = {
     "Blood Pressure": [
+      { date: "Apr 15", systolic: 125, diastolic: 82 },
+      { date: "Apr 21", systolic: 123, diastolic: 80 },
       { date: "May 1", systolic: 121, diastolic: 79 },
       { date: "May 5", systolic: 119, diastolic: 77 },
       { date: "May 9", systolic: 120, diastolic: 76 },
@@ -245,6 +271,8 @@ export default function HealthVitalsPage() {
       { date: "May 15", systolic: 118, diastolic: 75 },
     ],
     "Heart Rate": [
+      { date: "Apr 15", value: 76 },
+      { date: "Apr 23", value: 74 },
       { date: "May 1", value: 72 },
       { date: "May 5", value: 70 },
       { date: "May 9", value: 74 },
@@ -252,22 +280,30 @@ export default function HealthVitalsPage() {
       { date: "May 15", value: 68 },
     ],
     "Body Temperature": [
+      { date: "Apr 15", value: 98.2 },
+      { date: "Apr 23", value: 98.3 },
       { date: "May 1", value: 98.4 },
       { date: "May 8", value: 98.5 },
       { date: "May 15", value: 98.6 },
     ],
     "Blood Glucose": [
+      { date: "Apr 15", value: 98 },
+      { date: "Apr 23", value: 96 },
       { date: "May 1", value: 94 },
       { date: "May 8", value: 96 },
       { date: "May 14", value: 138 },
       { date: "May 15", value: 92 },
     ],
     "Oxygen Saturation": [
+      { date: "Apr 15", value: 96 },
+      { date: "Apr 23", value: 97 },
       { date: "May 1", value: 97 },
       { date: "May 8", value: 98 },
       { date: "May 15", value: 98 },
     ],
     Weight: [
+      { date: "Apr 1", value: 176.5 },
+      { date: "Apr 8", value: 175.8 },
       { date: "Apr 15", value: 175.0 },
       { date: "Apr 22", value: 174.2 },
       { date: "Apr 29", value: 173.5 },
@@ -275,6 +311,7 @@ export default function HealthVitalsPage() {
       { date: "May 15", value: 172.5 },
     ],
     BMI: [
+      { date: "Apr 1", value: 25.3 },
       { date: "Apr 15", value: 25.1 },
       { date: "Apr 29", value: 24.9 },
       { date: "May 10", value: 24.7 },
@@ -282,7 +319,7 @@ export default function HealthVitalsPage() {
   }
 
   // AI interpretations
-  const aiInterpretations = {
+  const aiInterpretations: AIInterpretationsType = {
     "Blood Pressure":
       "Your blood pressure readings are generally within the normal range (below 120/80 mmHg), which is excellent. Your most recent reading of 118/75 mmHg indicates healthy cardiovascular function. There was a slight elevation on May 14th (122/78 mmHg), but this is still considered normal to slightly elevated and may be related to your noted light exercise before the reading. Continue monitoring regularly and maintain your healthy lifestyle habits including regular exercise, balanced diet low in sodium, and stress management techniques.",
     "Heart Rate":
@@ -297,6 +334,85 @@ export default function HealthVitalsPage() {
       "Your weight shows a gradual, healthy decrease from 175.0 lbs to 172.5 lbs over the past month. This represents a loss of 2.5 pounds, or about 0.6 pounds per week, which is considered a healthy and sustainable rate of weight loss. If weight loss is your goal, this gradual approach is ideal for long-term success and health benefits.",
     BMI: "Your BMI has decreased from 25.1 to 24.7, moving from the overweight category (25-29.9) into the normal weight range (18.5-24.9). This is a positive change for your overall health. While BMI has limitations as a measure of health, this trend suggests improvements in your body composition. Continue with your current approach to maintain this healthy BMI.",
   }
+
+  // Debug: Log vital type names and their mapping
+  console.log("Vital Types Mapping:", Object.entries(vitalTypes).map(([key, value]) => ({ key, name: value.name })));
+  console.log("Historical Data Keys:", Object.keys(historicalData));
+  console.log("AI Interpretations Keys:", Object.keys(aiInterpretations));
+
+  // Create a mapping between vital type keys and their display names
+  const vitalTypeToNameMap = Object.fromEntries(
+    Object.entries(vitalTypes).map(([key, value]) => [key, value.name])
+  );
+
+  // Create a reverse mapping from display names to vital type keys
+  const nameToVitalTypeMap = Object.fromEntries(
+    Object.entries(vitalTypes).map(([key, value]) => [value.name, key])
+  );
+
+  // Get safe access to historicalData
+  const getHistoricalData = (vitalName: string): BloodPressureData | SingleValueData | undefined => {
+    // Debug the lookup attempt
+    console.log(`Looking up historical data for: "${vitalName}"`);
+
+    // Direct check if the name exists in historicalData
+    if (vitalName in historicalData) {
+      return historicalData[vitalName as keyof HistoricalDataType];
+    }
+
+    // Map between vital types and historical data keys
+    const vitalNameToHistoricalKey: Record<string, keyof HistoricalDataType> = {
+      "Blood Pressure": "Blood Pressure",
+      "Heart Rate": "Heart Rate",
+      "Body Temperature": "Body Temperature",
+      "Blood Glucose": "Blood Glucose",
+      "Oxygen Saturation": "Oxygen Saturation",
+      "Weight": "Weight",
+      "BMI": "BMI"
+    };
+
+    // Try to find a matching key
+    const mappedKey = vitalNameToHistoricalKey[vitalName];
+    if (mappedKey) {
+      console.log(`Found mapped key: "${mappedKey}" for vital name: "${vitalName}"`);
+      return historicalData[mappedKey];
+    }
+
+    console.error(`No historical data found for vital name: "${vitalName}"`);
+    return undefined;
+  };
+
+  // Get safe access to AI interpretations
+  const getAIInterpretation = (vitalName: string): string | undefined => {
+    // Debug the lookup attempt
+    console.log(`Looking up AI interpretation for: "${vitalName}"`);
+
+    // Direct check if the name exists in aiInterpretations
+    if (vitalName in aiInterpretations) {
+      return aiInterpretations[vitalName as keyof AIInterpretationsType];
+    }
+
+    // Map between vital types and AI interpretation keys
+    const vitalNameToAIKey: Record<string, keyof AIInterpretationsType> = {
+      "Blood Pressure": "Blood Pressure",
+      "Heart Rate": "Heart Rate",
+      "Body Temperature": "Body Temperature",
+      "Blood Glucose": "Blood Glucose",
+      "Oxygen Saturation": "Oxygen Saturation",
+      "Weight": "Weight",
+      "BMI": "BMI"
+    };
+
+    // Try to find a matching key
+    const mappedKey = vitalNameToAIKey[vitalName];
+    if (mappedKey) {
+      console.log(`Found mapped key: "${mappedKey}" for vital name: "${vitalName}"`);
+      return aiInterpretations[mappedKey];
+    }
+
+    console.error(`No AI interpretation found for vital name: "${vitalName}"`);
+    return undefined;
+  };
 
   // Group vitals by type
   const groupedVitals = useMemo(() => {
@@ -366,13 +482,54 @@ export default function HealthVitalsPage() {
     const vitalName = vitalTypeInfo.name
     const vitalUnit = vitalTypeInfo.unit
 
-    if (historicalData[vitalName]) {
+    console.log(`Attempting to show trend for: vitalType=${vitalType}, vitalName=${vitalName}`);
+
+    // Mapping from vital types to historical data keys
+    type HistoricalKeyType = keyof typeof historicalData | undefined;
+
+    const vitalTypeToHistoricalKey: Record<string, HistoricalKeyType> = {
+      "blood-pressure": "Blood Pressure",
+      "heart-rate": "Heart Rate",
+      "temperature": "Body Temperature",
+      "blood-glucose": "Blood Glucose",
+      "oxygen-saturation": "Oxygen Saturation",
+      "weight": "Weight",
+      "bmi": "BMI",
+      "height": undefined // We don't have historical height data
+    };
+
+    // Get the appropriate key for historical data lookup
+    const historicalKey = vitalTypeToHistoricalKey[vitalType];
+    console.log(`Mapped vitalType "${vitalType}" to historical key "${historicalKey}"`);
+
+    // Get data using the mapped key
+    const data = historicalKey ? historicalData[historicalKey] : undefined;
+    console.log("Data from direct mapping:", data);
+
+    if (data && data.length > 0) {
+      // Ensure data is correctly ordered (oldest to newest)
+      const orderedData = [...data].sort((a, b) => {
+        // Convert dates like "Apr 15" to timestamps for comparison
+        const getTimestamp = (dateStr: string) => {
+          const [month, day] = dateStr.split(" ");
+          // Current year as we're working with relative recent dates
+          const year = new Date().getFullYear();
+          const monthIndex = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(month);
+          return new Date(year, monthIndex, parseInt(day)).getTime();
+        };
+
+        return getTimestamp(a.date) - getTimestamp(b.date);
+      });
+
+      console.log(`Showing trend for ${vitalName}, ordered data:`, orderedData);
+
       setSelectedVitalName(vitalName)
       setSelectedVitalUnit(vitalUnit)
-      setSelectedVitalData(historicalData[vitalName])
+      setSelectedVitalData(orderedData)
       setShowTrendDialog(true)
     } else {
       // If no historical data is available, show a message
+      console.error(`No historical data available for ${vitalName} (${vitalType})`);
       alert(`No historical data available for ${vitalName}`)
     }
   }
@@ -382,10 +539,30 @@ export default function HealthVitalsPage() {
     const vitalTypeInfo = vitalTypes[vitalType as keyof typeof vitalTypes]
     const vitalName = vitalTypeInfo.name
 
-    if (aiInterpretations[vitalName]) {
+    // Mapping from vital types to AI interpretation keys
+    const vitalTypeToAIKey: Record<string, keyof AIInterpretationsType> = {
+      "blood-pressure": "Blood Pressure",
+      "heart-rate": "Heart Rate",
+      "temperature": "Body Temperature",
+      "blood-glucose": "Blood Glucose",
+      "oxygen-saturation": "Oxygen Saturation",
+      "weight": "Weight",
+      "bmi": "BMI"
+    };
+
+    // Get the appropriate key for AI interpretation lookup
+    const aiKey = vitalTypeToAIKey[vitalType];
+    console.log(`Mapped vitalType "${vitalType}" to AI key "${aiKey}"`);
+
+    // Get interpretation using the mapped key
+    const interpretation = aiKey ? aiInterpretations[aiKey] : undefined;
+
+    if (interpretation) {
       setSelectedVitalName(vitalName)
-      setSelectedVitalInterpretation(aiInterpretations[vitalName])
+      setSelectedVitalInterpretation(interpretation)
       setShowAIDialog(true)
+    } else {
+      console.error(`No AI interpretation available for ${vitalName} (${vitalType})`);
     }
   }
 
@@ -700,7 +877,7 @@ export default function HealthVitalsPage() {
                             </Badge>
                           </div>
                           <Button
-                            variantt="ghost"
+                            variant="ghost"
                             size="sm"
                             className="h-6 w-6 p-0"
                             onClick={() => {
@@ -911,7 +1088,7 @@ export default function HealthVitalsPage() {
                                         {vital.date} • {vital.time}
                                       </span>
                                       {index === 0 && (
-                                        <Badge variant="outline" size="sm" className="text-xs">
+                                        <Badge variant="outline" className="text-xs">
                                           Latest
                                         </Badge>
                                       )}
@@ -967,6 +1144,9 @@ export default function HealthVitalsPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>{selectedVitalName} Trend</DialogTitle>
+            <DialogDescription>
+              {selectedVitalData.length} data points from {selectedVitalData.length > 0 ? selectedVitalData[0].date : ''} to {selectedVitalData.length > 0 ? selectedVitalData[selectedVitalData.length - 1].date : ''}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <div className="h-[300px] w-full">
@@ -983,7 +1163,7 @@ export default function HealthVitalsPage() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis
-                    domain={["auto", "auto"]}
+                    domain={['auto', 'auto']}
                     label={{ value: selectedVitalUnit, angle: -90, position: "insideLeft" }}
                   />
                   <Tooltip
@@ -1002,6 +1182,8 @@ export default function HealthVitalsPage() {
                         activeDot={{ r: 8, fill: "#dc2626" }}
                         name="Systolic"
                         dot={{ stroke: "#b91c1c", strokeWidth: 1, r: 4, fill: "#ef4444" }}
+                        isAnimationActive={false}
+                        connectNulls={true}
                       />
                       <Line
                         type="monotone"
@@ -1011,6 +1193,8 @@ export default function HealthVitalsPage() {
                         activeDot={{ r: 8, fill: "#2563eb" }}
                         name="Diastolic"
                         dot={{ stroke: "#1d4ed8", strokeWidth: 1, r: 4, fill: "#3b82f6" }}
+                        isAnimationActive={false}
+                        connectNulls={true}
                       />
                     </>
                   ) : (
@@ -1022,6 +1206,8 @@ export default function HealthVitalsPage() {
                       activeDot={{ r: 8, fill: "#2563eb" }}
                       name={selectedVitalName}
                       dot={{ stroke: "#1d4ed8", strokeWidth: 1, r: 4, fill: "#3b82f6" }}
+                      isAnimationActive={false}
+                      connectNulls={true}
                     />
                   )}
                 </LineChart>
@@ -1034,18 +1220,33 @@ export default function HealthVitalsPage() {
                 {selectedVitalData.length > 1 &&
                   (() => {
                     if (selectedVitalName === "Blood Pressure") {
-                      const firstSystolic = selectedVitalData[0].systolic
-                      const lastSystolic = selectedVitalData[selectedVitalData.length - 1].systolic
-                      const firstDiastolic = selectedVitalData[0].diastolic
-                      const lastDiastolic = selectedVitalData[selectedVitalData.length - 1].diastolic
+                      const firstReading = selectedVitalData[0];
+                      const lastReading = selectedVitalData[selectedVitalData.length - 1];
 
-                      const systolicChange = lastSystolic - firstSystolic
-                      const diastolicChange = lastDiastolic - firstDiastolic
+                      if (!firstReading || !lastReading ||
+                        typeof firstReading.systolic !== 'number' ||
+                        typeof lastReading.systolic !== 'number' ||
+                        typeof firstReading.diastolic !== 'number' ||
+                        typeof lastReading.diastolic !== 'number') {
+                        return '';
+                      }
+
+                      const systolicChange = lastReading.systolic - firstReading.systolic
+                      const diastolicChange = lastReading.diastolic - firstReading.diastolic
 
                       return ` Your systolic pressure has ${systolicChange > 0 ? "increased" : "decreased"} by ${Math.abs(systolicChange)} mmHg and your diastolic pressure has ${diastolicChange > 0 ? "increased" : "decreased"} by ${Math.abs(diastolicChange)} mmHg over this period.`
                     } else {
-                      const firstValue = selectedVitalData[0].value
-                      const lastValue = selectedVitalData[selectedVitalData.length - 1].value
+                      const firstReading = selectedVitalData[0];
+                      const lastReading = selectedVitalData[selectedVitalData.length - 1];
+
+                      if (!firstReading || !lastReading ||
+                        typeof firstReading.value !== 'number' ||
+                        typeof lastReading.value !== 'number') {
+                        return '';
+                      }
+
+                      const firstValue = firstReading.value;
+                      const lastValue = lastReading.value;
                       const change = (((lastValue - firstValue) / firstValue) * 100).toFixed(1)
                       const direction =
                         lastValue > firstValue ? "increased" : lastValue < firstValue ? "decreased" : "remained stable"

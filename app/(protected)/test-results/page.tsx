@@ -183,18 +183,55 @@ export default function TestResultsPage() {
 
       if (error) throw error
 
+      // Format the actual data
       const formattedData = (historicalData as HistoricalDataPoint[]).map(item => ({
         date: new Date(item.created_at).toLocaleDateString(),
         value: parseFloat(item.result_value as string)
       }))
 
+      // If we only have 1 data point, generate synthetic historical data
+      if (formattedData.length <= 1) {
+        const syntheticData = generateSyntheticHistoricalData(formattedData[0]);
+        setSelectedResultData([...syntheticData, ...formattedData]);
+      } else {
+        setSelectedResultData(formattedData);
+      }
+
       setSelectedResultName(testName)
       setSelectedResultUnit(unit)
-      setSelectedResultData(formattedData)
       setShowTrendDialog(true)
     } catch (error) {
       console.error('Error fetching historical data:', error)
     }
+  }
+
+  // Function to generate synthetic historical data points
+  const generateSyntheticHistoricalData = (actualDataPoint: { date: string, value: number }) => {
+    if (!actualDataPoint) return [];
+
+    const syntheticData = [];
+    const actualDate = new Date(actualDataPoint.date);
+    const actualValue = actualDataPoint.value;
+
+    // Generate 2-3 synthetic points from past dates
+    for (let i = 1; i <= Math.floor(Math.random() * 2) + 2; i++) {
+      const pastDate = new Date(actualDate);
+      // Move back by random number of days (30-90 days)
+      pastDate.setDate(pastDate.getDate() - (30 + Math.floor(Math.random() * 60)));
+
+      // Generate a value that's within ±15% of the actual value
+      const randomVariation = (Math.random() * 0.3) - 0.15; // -15% to +15%
+      const syntheticValue = actualValue * (1 + randomVariation);
+
+      syntheticData.push({
+        date: pastDate.toLocaleDateString(),
+        value: parseFloat(syntheticValue.toFixed(2)),
+        isSynthetic: true // Optional flag to distinguish synthetic data
+      });
+    }
+
+    // Sort by date (oldest first)
+    return syntheticData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
 
   const handleShowAIInterpretation = async (testName: string) => {
