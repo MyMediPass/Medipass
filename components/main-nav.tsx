@@ -41,9 +41,14 @@ export function MainNav({ className, items, ...props }: MainNavProps) {
       </nav>
       <div className="ml-auto flex items-center space-x-4">
         {user ? (
-          <Button variant="outline" onClick={() => signOut()}>
-            Sign out
-          </Button>
+          <>
+            <Button asChild variant="ghost">
+              <Link href="/dashboard">Dashboard</Link>
+            </Button>
+            <Button variant="outline" onClick={() => signOut()}>
+              Sign out
+            </Button>
+          </>
         ) : (
           <Button asChild>
             <Link href="/login">Sign in</Link>

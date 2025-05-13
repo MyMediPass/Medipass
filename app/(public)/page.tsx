@@ -3,7 +3,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, FileText, HeartPulse, MessageSquare, Shield, Stethoscope } from "lucide-react"
 
-export default function Home() {
+import { getUser } from "@/lib/auth"
+
+export default async function Home() {
+  const user = await getUser()
+  const isAuthenticated = !!user
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section with Background Video */}
@@ -32,12 +37,12 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row justify-center">
-              <Link href="/register">
+              <Link href={isAuthenticated ? "/dashboard" : "/register"}>
                 <Button size="lg" className="w-full sm:w-auto">
-                  Get Started
+                  {isAuthenticated ? "Visit Your Dashboard" : "Get Started"}
                 </Button>
               </Link>
-              <Link href="/login">
+              <Link href={isAuthenticated ? "/dashboard" : "/login"}>
                 <Button
                   size="lg"
                   variant="outline"

@@ -19,9 +19,14 @@ export function PublicHeader() {
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
           <nav className="flex items-center">
             {isAuthenticated ? (
-              <Button variant="outline" onClick={() => signOut()}>
-                Sign out
-              </Button>
+              <>
+                <Button asChild variant="ghost" className="mr-2">
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <Button variant="outline" onClick={() => signOut()}>
+                  Sign out
+                </Button>
+              </>
             ) : (
               <Button asChild>
                 <Link href="/login">Sign in</Link>
