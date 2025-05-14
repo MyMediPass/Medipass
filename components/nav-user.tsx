@@ -7,6 +7,7 @@ import {
   MoreVerticalIcon,
   UserCircleIcon,
 } from "lucide-react"
+import Link from "next/link"
 
 import {
   Avatar,
@@ -90,10 +91,12 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <UserCircleIcon className="mr-2 h-4 w-4" />
-                Account
-              </DropdownMenuItem>
+              <Link href="/profile" passHref>
+                <DropdownMenuItem>
+                  <UserCircleIcon className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuItem>
                 <CreditCardIcon className="mr-2 h-4 w-4" />
                 Billing

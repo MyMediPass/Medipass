@@ -138,7 +138,7 @@ export default function VisitsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Visits</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Appointments</h1>
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-1">
@@ -160,7 +160,7 @@ export default function VisitsPage() {
                   <Input
                     id="search"
                     type="search"
-                    placeholder="Search visits..."
+                    placeholder="Search appointments..."
                     className="pl-8"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -199,7 +199,7 @@ export default function VisitsPage() {
             Upcoming
           </TabsTrigger>
           <TabsTrigger value="past" className="text-xs">
-            Past Visits
+            Past Appointments
           </TabsTrigger>
           <TabsTrigger value="calendar" className="text-xs">
             Calendar View

@@ -79,15 +79,9 @@ const primaryNavConfig: NavItemGroup[] = [
       // { name: "Lab Upload", href: "/lab-upload", icon: FileText },
       { name: "Test Results", href: "/test-results", icon: FileText },
       { name: "Medications", href: "/medications", icon: Pill },
-      { name: "Past Visits", href: "/visits", icon: Calendar },
+      { name: "Appointments", href: "/visits", icon: Calendar },
       { name: "Health Vitals", href: "/health-vitals", icon: Activity },
       { name: "Vaccinations", href: "/vaccination-record", icon: Syringe },
-    ],
-  },
-  {
-    groupTitle: "Personal Info",
-    items: [
-      { name: "Profile", href: "/profile", icon: User },
       { name: "Family History", href: "/family-history", icon: User },
     ],
   },
@@ -102,7 +96,8 @@ const primaryNavConfig: NavItemGroup[] = [
     groupTitle: "Communication",
     items: [
       // { name: "Chat", href: "/chat", icon: MessageSquare },
-      { name: "Chat History", href: "/chat-history", icon: MessageSquare }
+      { name: "Chat History", href: "/chat-history", icon: MessageSquare },
+      { name: "Profile", href: "/profile", icon: User },
     ],
   },
 ]
