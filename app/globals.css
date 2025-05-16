@@ -164,3 +164,8 @@
     transparent 100%
   );
 }
+
+.rdp-root {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--primary);
+}

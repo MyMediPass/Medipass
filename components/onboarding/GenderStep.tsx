@@ -41,7 +41,7 @@ export default function GenderStep({ data, updateFormData, onNext, onPrev }: Gen
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="space-y-6 flex flex-col items-center py-6"
         >
-            <h2 className="text-3xl font-semibold text-center text-green-400">What is your gender?</h2>
+            <h2 className="text-3xl font-semibold text-center text-primary">What is your gender?</h2>
             <RadioGroup
                 value={gender}
                 onValueChange={setGender}
@@ -51,20 +51,20 @@ export default function GenderStep({ data, updateFormData, onNext, onPrev }: Gen
                     <Label
                         key={option.id}
                         htmlFor={option.id}
-                        className="flex items-center space-x-3 p-4 bg-slate-700 rounded-md hover:bg-slate-600/70 transition-colors cursor-pointer border border-slate-600 hover:border-green-500 has-[input:checked]:border-green-500 has-[input:checked]:bg-green-900/30"
+                        className="flex items-center space-x-3 p-4 rounded-md hover:bg-accent transition-colors cursor-pointer border hover:border-primary has-[input:checked]:border-primary has-[input:checked]:bg-accent"
                     >
-                        <RadioGroupItem value={option.id} id={option.id} className="border-slate-500 text-green-500 focus:ring-green-500 focus:ring-offset-slate-800 data-[state=checked]:border-green-500" />
-                        <span className="text-lg text-slate-100 font-serif">
+                        <RadioGroupItem value={option.id} id={option.id} />
+                        <span className="text-lg text-foreground font-serif">
                             {option.label}
                         </span>
                     </Label>
                 ))}
             </RadioGroup>
             <div className="flex justify-between w-full max-w-sm pt-4">
-                <Button onClick={onPrev} variant="outline" className="bg-transparent hover:bg-slate-700 border-slate-500 text-slate-300 hover:text-white">
+                <Button onClick={onPrev} variant="outline">
                     Back
                 </Button>
-                <Button onClick={handleNext} className="bg-green-500 hover:bg-green-600 text-white">
+                <Button onClick={handleNext}>
                     Next
                 </Button>
             </div>

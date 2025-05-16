@@ -16,7 +16,7 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
             className="flex flex-col items-center justify-center text-center space-y-8 py-8"
         >
             <motion.h1
-                className="text-5xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-emerald-500"
+                className="text-5xl md:text-6xl font-bold text-primary"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, delay: 0.2, ease: "backOut" }}
@@ -24,7 +24,7 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
                 Welcome to MediPass
             </motion.h1>
             <motion.p
-                className="text-lg md:text-xl text-slate-200"
+                className="text-lg md:text-xl text-muted-foreground"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.5 }}
@@ -39,7 +39,7 @@ export default function WelcomeStep({ onNext }: WelcomeStepProps) {
                 <Button
                     onClick={onNext}
                     size="lg"
-                    className="px-8 py-3 text-lg font-semibold bg-green-500 hover:bg-green-600 text-white transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+                    className="px-8 py-3 text-lg font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg"
                 >
                     Get Started
                 </Button>

@@ -95,12 +95,12 @@ export default function OnboardingPage() {
     };
 
     return (
-        <div className="flex flex-col items-center justify-start min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-gray-900 text-white p-4 pt-10 sm:pt-16">
+        <div className="flex flex-col items-center justify-start min-h-screen p-4 pt-10 sm:pt-16">
             <div className="w-full max-w-xl mb-8">
                 {step > 0 && <OnboardingProgress currentStep={step} totalSteps={TOTAL_STEPS} stepNames={STEP_NAMES} />}
             </div>
 
-            <div className="w-full max-w-xl p-6 sm:p-8 space-y-8 bg-slate-800/70 backdrop-blur-md rounded-xl shadow-2xl">
+            <div className="w-full max-w-xl p-6 sm:p-8 space-y-8 bg-card text-card-foreground rounded-xl shadow-2xl">
                 {step === 1 && <WelcomeStep onNext={nextStep} />}
                 {step === 2 && <NameStep data={formData} updateFormData={updateFormData} onNext={nextStep} onPrev={prevStep} />}
                 {step === 3 && <AgeStep data={formData} updateFormData={updateFormData} onNext={nextStep} onPrev={prevStep} />}

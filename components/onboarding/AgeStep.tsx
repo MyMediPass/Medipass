@@ -41,14 +41,14 @@ export default function AgeStep({ data, updateFormData, onNext, onPrev }: AgeSte
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="space-y-6 flex flex-col items-center py-6"
         >
-            <h2 className="text-3xl font-semibold text-center text-green-400">How old are you?</h2>
+            <h2 className="text-3xl font-semibold text-center text-primary">How old are you?</h2>
             <Input
                 id="age-input"
                 type="number"
                 value={age}
                 onChange={(e) => setAge(e.target.value)}
                 placeholder="Enter your age"
-                className="w-full max-w-sm text-lg p-3 font-serif bg-slate-700 border border-slate-600 placeholder-slate-400 text-slate-100 focus:border-green-500 focus:ring-0 rounded-md shadow-sm"
+                className="w-full max-w-sm text-lg p-3 font-serif focus:ring-0 rounded-md shadow-sm"
                 onKeyPress={(e) => {
                     if (e.key === "Enter") {
                         handleNext();
@@ -56,10 +56,10 @@ export default function AgeStep({ data, updateFormData, onNext, onPrev }: AgeSte
                 }}
             />
             <div className="flex justify-between w-full max-w-sm pt-4">
-                <Button onClick={onPrev} variant="outline" className="bg-transparent hover:bg-slate-700 border-slate-500 text-slate-300 hover:text-white">
+                <Button onClick={onPrev} variant="outline">
                     Back
                 </Button>
-                <Button onClick={handleNext} className="bg-green-500 hover:bg-green-600 text-white">
+                <Button onClick={handleNext}>
                     Next
                 </Button>
             </div>
