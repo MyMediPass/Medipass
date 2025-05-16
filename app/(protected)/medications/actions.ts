@@ -17,7 +17,7 @@ interface UpdateMedicationResult {
     error?: string;
 }
 
-export async function handleAddMedication(medicationData: StoredMedicationData): Promise<AddMedicationResult> {
+export async function handleAddMedication(medicationData: StoredMedicationData, id?: number): Promise<AddMedicationResult | UpdateMedicationResult> {
     const user = await getUser();
 
     if (!user) {
@@ -25,18 +25,20 @@ export async function handleAddMedication(medicationData: StoredMedicationData):
     }
 
     try {
-        // All fields in StoredMedicationData are expected to be provided by the form
-        // except id and daysUntilRefill which are handled by the backend/database or calculated.
-        const newMedication = await addMedication(user.id, medicationData);
-
-        revalidatePath('/(protected)/medications'); // Revalidate the page to show the new medication
-
-        // The addMedication function already returns the new medication object including its db ID
-        // We are returning StoredMedicationData from the action for now, but could return the full Medication type
-        return { success: true, medication: newMedication };
+        if (id) {
+            // This is an update
+            const updatedMedication = await updateMedication(id, medicationData);
+            revalidatePath('/(protected)/medications');
+            return { success: true, medication: updatedMedication };
+        } else {
+            // This is an add
+            const newMedication = await addMedication(user.id, medicationData);
+            revalidatePath('/(protected)/medications');
+            return { success: true, medication: newMedication };
+        }
     } catch (error) {
-        console.error("Error in handleAddMedication server action:", error);
-        let errorMessage = "Failed to add medication.";
+        console.error(`Error in ${id ? 'updating' : 'adding'} medication server action:`, error);
+        let errorMessage = `Failed to ${id ? 'update' : 'add'} medication.`;
         if (error instanceof Error) {
             errorMessage = error.message;
         }
