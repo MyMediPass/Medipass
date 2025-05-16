@@ -5,8 +5,10 @@ import type React from "react"
 import { useState } from "react"
 import { MedicationReminders } from "@/components/dashboard/MedicationReminders"
 import { UpcomingAppointments } from "@/components/dashboard/UpcomingAppointments"
+import { useUser } from "@clerk/nextjs"
 
 export default function Dashboard() {
+  const { user } = useUser()
   const [initialMedications] = useState([
     {
       id: 1,
@@ -56,7 +58,7 @@ export default function Dashboard() {
   return (
     <div className="container px-4 py-6 md:px-6 md:py-10">
       <div className="flex flex-col gap-4">
-        <h1 className="text-3xl font-bold">Welcome back, John</h1>
+        <h1 className="text-3xl font-bold">Welcome back, {user?.firstName}</h1>
         <p className="text-muted-foreground">Here's your health dashboard</p>
       </div>
 

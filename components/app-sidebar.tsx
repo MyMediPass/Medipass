@@ -4,21 +4,8 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  ArrowUpCircleIcon,
-  BarChartIcon,
-  CameraIcon,
-  ClipboardListIcon,
-  DatabaseIcon,
-  FileCodeIcon,
-  FileIcon,
-  FileTextIcon,
-  FolderIcon,
   HelpCircleIcon,
-  LayoutDashboardIcon,
-  ListIcon,
   SearchIcon,
-  SettingsIcon,
-  UsersIcon,
   Home,
   BarChart2,
   FileText,
@@ -31,12 +18,10 @@ import {
   StickyNote,
   MessageSquare,
   Settings,
-  LogOut,
 } from "lucide-react"
 
-import { useUser } from "@/components/user-provider"
+import { useUser } from "@clerk/nextjs"
 import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import { Logo } from "./logo"
 import { Button } from "@/components/ui/button"
@@ -45,9 +30,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
 
@@ -128,8 +110,10 @@ const staticNavSecondaryItems = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, signOut } = useUser()
-  const isAdmin = user?.role === "admin"
+  const { user } = useUser()
+  const isAdmin = false
+  console.log(user)
+
   const pathname = usePathname()
   const { isMobile, setOpenMobile } = useSidebar()
 
@@ -140,25 +124,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [pathname, isMobile, setOpenMobile])
 
   const currentAdminItem = isAdmin ? adminNavItem : undefined;
-
-  const userPropForNavUser = React.useMemo(() => {
-    if (!user) return null
-
-    // Extract user metadata, if it exists
-    const metadata = user.user_metadata || {};
-
-    // Determine the name: check common metadata fields, then email, then fallback
-    const userName = metadata.name || metadata.full_name || user.email || "User";
-
-    // Determine the avatar: check common metadata fields for an avatar URL
-    const userAvatar = metadata.avatar_url || metadata.picture || undefined;
-
-    return {
-      name: userName as string, // Cast to string, as it will have a fallback
-      email: (user.email as string) || "",
-      avatar: userAvatar as string | undefined, // This can be undefined
-    }
-  }, [user])
 
   return (
     <Sidebar collapsible="offcanvas" {...props} className="main-sidebar">
@@ -184,7 +149,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain navGroups={primaryNavConfig} adminItem={currentAdminItem} />
       </SidebarContent>
       <SidebarFooter>
-        {userPropForNavUser && <NavUser user={userPropForNavUser} onSignOut={signOut} />}
+        {user && <NavUser user={user} onSignOut={() => alert('not implemented yet')} />}
       </SidebarFooter>
     </Sidebar>
   )

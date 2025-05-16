@@ -35,9 +35,11 @@ export function NavUser({
   onSignOut,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string | undefined
+    firstName: string
+    fullName: string,
+    hasImage: boolean,
+    imageUrl: string,
+    emailAddresses: any[]
   }
   onSignOut?: () => void
 }) {
@@ -52,16 +54,16 @@ export function NavUser({
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-lg grayscale">
-                <AvatarImage src={user.avatar || undefined} alt={user.name} />
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user.imageUrl || undefined} alt={user.firstName} />
                 <AvatarFallback className="rounded-lg">
-                  {user.name?.charAt(0).toUpperCase() || "U"}
+                  {user.firstName?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="font-medium truncate">{user.name}</span>
+                <span className="font-medium truncate">{user.fullName}</span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {user.email}
+                  {user.emailAddresses[0].emailAddress}
                 </span>
               </div>
               <MoreVerticalIcon className="ml-auto size-4" />
@@ -76,15 +78,15 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar || undefined} alt={user.name} />
+                  <AvatarImage src={user.imageUrl || undefined} alt={user.firstName} />
                   <AvatarFallback className="rounded-lg">
-                    {user.name?.charAt(0).toUpperCase() || "U"}
+                    {user.firstName?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="font-medium truncate">{user.name}</span>
+                  <span className="font-medium truncate">{user.fullName}</span>
                   <span className="truncate text-xs text-muted-foreground">
-                    {user.email}
+                    {user.emailAddresses[0].emailAddress}
                   </span>
                 </div>
               </div>
