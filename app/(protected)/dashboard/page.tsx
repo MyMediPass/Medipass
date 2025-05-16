@@ -2,25 +2,7 @@
 
 import type React from "react"
 
-import Link from "next/link"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import {
-  Pill,
-  Calendar,
-  MessageSquare,
-  Bot,
-  AlertCircle,
-  Info,
-  Settings,
-} from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { FriendlyChat } from "@/components/FriendlyChat"
 import { MedicationReminders } from "@/components/dashboard/MedicationReminders"
 import { UpcomingAppointments } from "@/components/dashboard/UpcomingAppointments"
 
@@ -70,10 +52,6 @@ export default function Dashboard() {
       location: "Heart Health Specialists",
     },
   ]
-
-  // Mock API status
-  const isOfflineMode = false
-  const chatError = null
 
   return (
     <div className="container px-4 py-6 md:px-6 md:py-10">
