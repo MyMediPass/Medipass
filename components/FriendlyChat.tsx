@@ -78,7 +78,7 @@ export function FriendlyChat({
 
     const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         handleSubmit(e, {
-            experimental_attachments: files,
+            experimental_attachments: files ?? undefined,
         })
         handleClearFiles()
     }
@@ -228,6 +228,7 @@ export function FriendlyChat({
                     className="flex-1"
                     disabled={isLoading}
                     name="message"
+                    autoComplete="off"
                 />
                 <Button
                     size="icon"
