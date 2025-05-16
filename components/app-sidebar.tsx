@@ -48,6 +48,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 import type { LucideIcon } from "lucide-react"
@@ -129,6 +130,14 @@ const staticNavSecondaryItems = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, signOut } = useUser()
   const isAdmin = user?.role === "admin"
+  const pathname = usePathname()
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  React.useEffect(() => {
+    if (isMobile) {
+      setOpenMobile(false)
+    }
+  }, [pathname, isMobile, setOpenMobile])
 
   const currentAdminItem = isAdmin ? adminNavItem : undefined;
 
