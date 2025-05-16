@@ -337,25 +337,17 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
     // --- Sub-Components for Page Layout ---
     const PageHeader = () => (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-800">👋 Hi {userName}!</h1>
-                <p className="text-md md:text-lg text-gray-600">Track your prescriptions, doses, and refills with ease.</p>
-            </div>
             <Button onClick={openAddModal} size="lg" className="bg-primary hover:bg-primary/90 text-white">
                 <Plus className="h-5 w-5 mr-2" />
-                Add New Medication
+                Track a New Medication
             </Button>
         </div>
     );
-
-    const TodaysMedicationsSection = () => { /* ... placeholder ... */ return null; };
-    const UpcomingRefillsSection = () => { /* ... placeholder ... */ return null; };
 
     const AllMedicationsSection = () => (
         <section>
             <div className="flex flex-col sm:flex-row gap-2 items-center mb-4">
                 <h2 className="text-2xl font-semibold whitespace-nowrap text-gray-700">All Your Medications</h2>
-                {/* Filters UI ... (remains mostly the same as before) ... */}
                 <div className="relative w-full sm:w-auto sm:flex-grow sm:max-w-xs">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -423,11 +415,9 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
 
     // --- Main Render ---
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+        <div className="min-h-screen bg-background dark:bg-slate-900">
             <div className="container mx-auto px-4 md:px-6 py-8 md:py-12 space-y-10">
                 <PageHeader />
-                {/* <TodaysMedicationsSection /> */}
-                {/* <UpcomingRefillsSection /> */}
                 <AllMedicationsSection />
 
                 {/* Add/Edit Medication Dialog (Multi-Step) */}
