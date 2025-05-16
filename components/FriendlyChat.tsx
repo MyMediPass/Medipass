@@ -103,8 +103,8 @@ export function FriendlyChat({
     }
 
     return (
-        <div className={`space-y-4 ${className}`}>
-            <ScrollArea className={`h-[${height}] w-full pr-4`}>
+        <div className={`h-full space-y-4 ${className} flex flex-col p-4`}>
+            <ScrollArea className={`flex-1 w-full pr-4`}>
                 <div className="space-y-4">
                     {messages.map((message) => (
                         <div
