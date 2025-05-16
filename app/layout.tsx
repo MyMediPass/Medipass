@@ -4,7 +4,6 @@ import { Outfit } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
-import "react-day-picker/dist/style.css";
 
 const outfit = Outfit({ subsets: ["latin"] })
 

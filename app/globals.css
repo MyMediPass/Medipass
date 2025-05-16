@@ -38,6 +38,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
@@ -163,9 +164,4 @@
     rgba(16, 185, 129, 0.05) 50%,
     transparent 100%
   );
-}
-
-.rdp-root {
-  --rdp-accent-color: var(--primary);
-  --rdp-accent-background-color: var(--primary);
 }
