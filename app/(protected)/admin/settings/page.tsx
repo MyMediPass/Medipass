@@ -1,7 +1,9 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
-import { createServerSupabaseClient } from "@/lib/supabase"
+// import { cookies } from "next/headers"
+// import { createServerSupabaseClient } from "@/lib/supabase"
+import { createClient as createServerSupabaseClient } from "@/lib/supabase/server"
+import { auth } from "@clerk/nextjs/server"
 import { ApiKeyForm } from "@/components/admin/api-key-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,23 +11,22 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 // Check if the current user is an admin
 async function checkAdmin() {
-  const cookieStore = cookies()
-  const supabase = createServerSupabaseClient(cookieStore)
+  // const cookieStore = cookies()
+  const { userId } = await auth()
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
-
-  if (error || !user) {
+  if (!userId) {
+    // This should ideally be caught by Clerk middleware already for a protected route
     redirect("/login")
+    return
   }
 
-  // Get user role from the database
+  const supabase = await createServerSupabaseClient()
+
+  // Get user role from the database using Clerk's userId
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single()
 
   if (profileError || !profile || profile.role !== "admin") {

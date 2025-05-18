@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { useUser } from "@/components/user-provider"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Logo } from "./logo"
 
@@ -17,7 +17,12 @@ interface MainNavProps extends React.HTMLAttributes<HTMLElement> {
 
 export function MainNav({ className, items, ...props }: MainNavProps) {
   const pathname = usePathname()
-  const { user, signOut } = useUser()
+  const { user, isSignedIn, isLoaded } = useUser()
+  const { signOut } = useClerk()
+
+  if (!isLoaded) {
+    return null
+  }
 
   return (
     <div className="mr-4 hidden md:flex">
@@ -40,7 +45,7 @@ export function MainNav({ className, items, ...props }: MainNavProps) {
         ))}
       </nav>
       <div className="ml-auto flex items-center space-x-4">
-        {user ? (
+        {isSignedIn ? (
           <>
             <Button asChild variant="ghost">
               <Link href="/dashboard">Dashboard</Link>
@@ -51,7 +56,7 @@ export function MainNav({ className, items, ...props }: MainNavProps) {
           </>
         ) : (
           <Button asChild>
-            <Link href="/login">Sign in</Link>
+            <Link href="/sign-in">Sign in</Link>
           </Button>
         )}
       </div>
