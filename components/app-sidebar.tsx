@@ -20,7 +20,7 @@ import {
   Settings,
 } from "lucide-react"
 
-import { useUser } from "@clerk/nextjs"
+import { useUser, useClerk } from "@clerk/nextjs"
 import { NavMain } from "@/components/nav-main"
 import { NavUser } from "@/components/nav-user"
 import { Logo } from "./logo"
@@ -80,7 +80,7 @@ const primaryNavConfig: NavItemGroup[] = [
     items: [
       // { name: "Chat", href: "/chat", icon: MessageSquare },
       { name: "Chat History", href: "/chat-history", icon: MessageSquare },
-      { name: "Profile", href: "/profile", icon: User },
+      { name: "Profile", href: process.env.NEXT_PUBLIC_CLERK_USER_PROFILE_URL || "/user-profile", icon: User },
     ],
   },
 ]
@@ -110,9 +110,12 @@ const staticNavSecondaryItems = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useUser()
-  const isAdmin = false
-  console.log(user)
+  const { user, isLoaded } = useUser()
+  const { signOut } = useClerk()
+
+  // TODO: Replace isAdmin with actual logic based on Clerk user roles/permissions
+  // For example, user?.publicMetadata?.isAdmin or check organization roles.
+  const isAdmin = user?.publicMetadata?.['isAdmin'] === true
 
   const pathname = usePathname()
   const { isMobile, setOpenMobile } = useSidebar()
@@ -124,6 +127,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   }, [pathname, isMobile, setOpenMobile])
 
   const currentAdminItem = isAdmin ? adminNavItem : undefined;
+
+  // Wait for Clerk to load before rendering user-dependent UI
+  if (!isLoaded) {
+    return <Sidebar collapsible="offcanvas" {...props} className="main-sidebar"><SidebarHeader><Logo size="lg" linkWrapper={false} /></SidebarHeader><SidebarContent></SidebarContent></Sidebar>; // Or a proper skeleton
+  }
 
   return (
     <Sidebar collapsible="offcanvas" {...props} className="main-sidebar">
@@ -149,7 +157,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain navGroups={primaryNavConfig} adminItem={currentAdminItem} />
       </SidebarContent>
       <SidebarFooter>
-        {user && <NavUser user={user} onSignOut={() => alert('not implemented yet')} />}
+        {/* Pass Clerk user object and signOut function to NavUser */}
+        {user && <NavUser user={user} onSignOut={signOut} />}
       </SidebarFooter>
     </Sidebar>
   )

@@ -1,6 +1,6 @@
 # Auth Refactor to Clerk - Summary
 
-Number of distinct refactoring operations (files created, edited, or deleted as part of the auth migration to Clerk): 19
+Number of distinct refactoring operations (files created, edited, or deleted as part of the auth migration to Clerk): 22
 
 **Key areas addressed:**
 
@@ -20,15 +20,18 @@ Number of distinct refactoring operations (files created, edited, or deleted as 
     *   Ensured database queries use Clerk's `userId` where applicable.
     *   Specific files refactored include:
         *   `app/(protected)/ss/page.tsx`
-        *   `app/(protected)/admin/settings/page.tsx` (and its `checkAdmin` function)
-        *   `app/actions/api-key-actions.ts` (and its `validateAdmin` function)
+        *   `app/(protected)/admin/settings/page.tsx`
+        *   `app/actions/api-key-actions.ts`
 
 4.  **Deletion of Obsolete Supabase Auth Flows:**
-    *   Removed old Supabase-specific login pages and actions (`app/(public)/login/...`).
-    *   Removed old Supabase-specific registration pages and actions (`app/(public)/register/...`).
-    *   Removed old Supabase-specific email confirmation flows (`app/(public)/auth/confirmation/...` and `app/auth/confirm/...`).
+    *   Removed old Supabase-specific login pages and actions.
+    *   Removed old Supabase-specific registration pages and actions.
+    *   Removed old Supabase-specific email confirmation flows.
 
 5.  **UI Component Updates:**
-    *   Refactored `components/main-nav.tsx` to use `useUser` and `useClerk` from `@clerk/nextjs`.
+    *   Refactored `components/main-nav.tsx` to use Clerk hooks.
+    *   Refactored `components/nav-user.tsx` to align with Clerk `UserResource` and use Clerk `signOut`.
+    *   Refactored `components/app-sidebar.tsx` to correctly use Clerk hooks and pass props to `NavUser`.
+    *   Refactored `app/(protected)/medications/medications-client.tsx` to align with Clerk `UserResource`.
 
 **Note:** This count includes individual file modifications, creations, and deletions that were part of the direct auth system replacement. 

@@ -25,7 +25,7 @@ import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Medication, StoredMedicationData } from "@/lib/medications"
-import type { User } from "@supabase/supabase-js"
+import type { UserResource } from "@clerk/types"
 import { handleAddMedication, handleTakeMedication } from "./actions"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -33,7 +33,7 @@ import { MedCard } from "@/components/medications/MedCard"
 
 interface MedicationsClientPageProps {
     initialMedications: Medication[];
-    user: User | null;
+    user: UserResource | null;
 }
 
 const initialFormState: StoredMedicationData = {
@@ -92,11 +92,15 @@ export default function MedicationsClientPage({ initialMedications, user }: Medi
 
     const userName = useMemo(() => {
         if (!user) return "User";
-        return user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || "User";
+        if (user.fullName) return user.fullName;
+        if (user.firstName) return user.firstName;
+        const primaryEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
+        if (primaryEmail) return primaryEmail.split('@')[0];
+        return "User";
     }, [user]);
 
     if (!user) {
-        return <div className="container px-4 md:px-6 py-6 md:py-10 text-center">Loading user data...</div>
+        return <div className="container px-4 md:px-6 py-6 md:py-10 text-center">Loading user data or user not found...</div>
     }
 
     // --- Form Input Handlers ---

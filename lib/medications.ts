@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { differenceInDays, isValid, parseISO } from 'date-fns';
+import { differenceInDays, isValid } from 'date-fns';
 
 // Medication type as consumed by the UI, including calculated fields
 export type Medication = {
@@ -23,18 +23,12 @@ export type Medication = {
     // user_id and created_at can be added if needed by the UI directly
 };
 
-// Data structure for the JSONB 'data' column in Supabase
-// It excludes 'id' (which is a top-level DB column)
-// and 'daysUntilRefill' (which is calculated).
 export type StoredMedicationData = Omit<Medication, 'id' | 'daysUntilRefill'>;
 
-// Helper function to robustly calculate daysUntilRefill
 function calculateDaysUntilRefill(status: string, refillDateStr: string | undefined | null): number {
     if (status !== 'active' || !refillDateStr || refillDateStr === "N/A") {
         return 0;
     }
-    // new Date() can parse "May 15, 2025" and "YYYY-MM-DD" among others.
-    // For consistency, storing dates as "YYYY-MM-DD" is recommended.
     const parsedDate = new Date(refillDateStr);
     if (isValid(parsedDate)) {
         const diff = differenceInDays(parsedDate, new Date());
@@ -80,7 +74,7 @@ export async function addMedication(userId: string, medicationDetails: StoredMed
     const { data: insertedRow, error } = await supabase
         .from('medications')
         .insert([{ user_id: userId, data: medicationDetails }])
-        .select('id, data') // Select 'created_at' if needed for the returned Medication object
+        .select('id, data')
         .single();
 
     if (error) {
@@ -98,17 +92,15 @@ export async function addMedication(userId: string, medicationDetails: StoredMed
         id: insertedRow.id,
         ...storedData,
         daysUntilRefill,
-        // created_at: insertedRow.created_at, // if you add created_at to Medication type
     };
 }
 
 export async function updateMedication(medicationId: number, updates: Partial<StoredMedicationData>): Promise<Medication> {
     const supabase = await createClient();
 
-    // Fetch the current medication data to merge updates, ensuring atomicity if possible or handling carefully
     const { data: currentRow, error: fetchError } = await supabase
         .from('medications')
-        .select('id, data') // Add 'created_at', 'user_id' if they are part of Medication type and needed
+        .select('id, data')
         .eq('id', medicationId)
         .single();
 
@@ -142,6 +134,5 @@ export async function updateMedication(medicationId: number, updates: Partial<St
         id: updatedRow.id,
         ...returnedStoredData,
         daysUntilRefill,
-        // created_at: updatedRow.created_at, // if you add created_at to Medication type
     };
 } 

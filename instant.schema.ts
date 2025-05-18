@@ -27,6 +27,11 @@ const _schema = i.schema({
       notifications: i.boolean().optional(),
       // createdAt and updatedAt are automatically managed by InstantDB
     }),
+    todos: i.entity({
+      text: i.string(),
+      done: i.boolean(),
+      createdAt: i.number(),
+    }),
   },
   rooms: {},
 });

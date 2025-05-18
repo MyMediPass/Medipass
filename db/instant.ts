@@ -8,4 +8,4 @@ const APP_ID = "2b6eeee0-8b48-45af-9fe3-07dd73520df1";
 
 const db = init({ appId: APP_ID, schema });
 
-export default db;
+export { db, schema };

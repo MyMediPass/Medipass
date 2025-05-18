@@ -5,12 +5,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import {
   ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
 } from '@clerk/nextjs'
+import InstantDBAuthSync from "@/components/InstantDBAuthSync"
 
 const outfit = Outfit({ subsets: ["latin"] })
 
@@ -27,6 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
+      <InstantDBAuthSync />
       <html lang="en" suppressHydrationWarning>
         <body className={outfit.className}>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
