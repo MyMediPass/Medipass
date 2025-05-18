@@ -32,6 +32,23 @@ const _schema = i.schema({
       done: i.boolean(),
       createdAt: i.number(),
     }),
+    medications: i.entity({
+      userId: i.string().indexed(), // To link medication to a user
+      name: i.string(),
+      dosage: i.string().optional(),
+      frequency: i.string().optional(),
+      time: i.string().optional(), // e.g., "08:00 AM"
+      instructions: i.string().optional(),
+      refillDate: i.string().optional(), // ISO date string
+      status: i.string().optional().indexed(), // e.g., "active", "completed", "paused"
+      pillsRemaining: i.number().optional(),
+      totalPills: i.number().optional(),
+      prescribedBy: i.string().optional(),
+      startDate: i.string(), // ISO date string
+      purpose: i.string().optional(),
+      endDate: i.string().optional(), // ISO date string
+      // createdAt and updatedAt are automatically managed by InstantDB
+    }),
   },
   rooms: {},
 });
