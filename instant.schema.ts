@@ -49,6 +49,20 @@ const _schema = i.schema({
       endDate: i.string().optional(), // ISO date string
       // createdAt and updatedAt are automatically managed by InstantDB
     }),
+    appointments: i.entity({
+      userId: i.string().indexed(),
+      doctor: i.string(),
+      specialty: i.string(),
+      date: i.string().indexed(), // ISO date string (YYYY-MM-DD) for sorting/filtering
+      time: i.string(), // e.g., "10:00 AM"
+      location: i.string(),
+      address: i.string().optional(),
+      notes: i.string().optional(), // Purpose of visit, etc.
+      type: i.string().indexed(), // e.g., "physical", "followup", "checkup"
+      status: i.string().indexed(), // e.g., "upcoming", "completed", "cancelled"
+      summary: i.string().optional(), // For past appointments
+      // createdAt and updatedAt are automatically managed by InstantDB
+    }),
   },
   rooms: {},
 });
