@@ -51,10 +51,15 @@ export default function HealthNotesPage() {
     healthNotes: {
       $: {
         where: { userId: clerkUser?.id || "" },
-        orderBy: { createdAt: "desc" },
+        order: {
+          serverCreatedAt: 'desc',
+        },
       },
     },
   })
+  if (notesError) {
+    console.error("Error loading notes:", notesError)
+  }
 
   const allNotes: HealthNote[] = notesData?.healthNotes || []
 
@@ -225,12 +230,6 @@ export default function HealthNotesPage() {
               <div className="p-4 text-center text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                 Loading notes...
-              </div>
-            )}
-            {notesError && (
-              <div className="p-4 text-center text-red-500">
-                <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-500" />
-                Error: {(notesError as any).message}
               </div>
             )}
             {!isLoadingNotes && filteredNotes.length === 0 && (

@@ -67,9 +67,7 @@ const _schema = i.schema({
       userId: i.string().indexed(),
       title: i.string(),
       content: i.string(),
-      tags: i.array(i.string()).optional(),
-      createdAt: i.number(), // Explicitly adding, though InstantDB can auto-manage
-      updatedAt: i.number().optional(), // Explicitly adding, though InstantDB can auto-manage
+      tags: i.json().optional()
     }),
   },
   rooms: {},
