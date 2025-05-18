@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileUp, FileText, Check, Clock, Loader2 } from "lucide-react"
@@ -23,6 +23,198 @@ interface LabReport {
   }[]
 }
 
+// New component to handle tabs and useSearchParams
+function LabUploadTabs({
+  previousReports,
+  loadingReports,
+  uploadedFile,
+  isAnalyzing,
+  statusMessage,
+  newReportId,
+  handleFileChange,
+  handleAnalyze,
+  handleViewReport,
+  currentUploadFilename
+}: {
+  previousReports: LabReport[]
+  loadingReports: boolean
+  uploadedFile: File | null
+  isAnalyzing: boolean
+  statusMessage: string | null
+  newReportId: string | null
+  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  handleAnalyze: () => void
+  handleViewReport: (reportId: string) => void
+  currentUploadFilename: string | null
+}) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const currentTab = searchParams.get('t') || 'upload'
+
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('t', value)
+    router.push(`?${params.toString()}`)
+  }
+
+  return (
+    <Tabs
+      value={currentTab}
+      onValueChange={handleTabChange}
+      className="space-y-4"
+    >
+      <TabsList>
+        <TabsTrigger value="upload">Upload New Lab</TabsTrigger>
+        <TabsTrigger value="previous">Previous Labs</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="upload" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Lab Report</CardTitle>
+            <CardDescription>Upload a PDF or image of your lab report to get an AI-generated summary</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center relative">
+              <FileUp className="h-8 w-8 mb-4 text-muted-foreground" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Drag and drop your file here or click to browse</p>
+                <p className="text-xs text-muted-foreground">Supports PDF, JPG, and PNG files up to 10MB</p>
+              </div>
+              <input
+                type="file"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={handleFileChange}
+              />
+            </div>
+
+            {uploadedFile && (
+              <div className="mt-4 p-6 border rounded-lg bg-card shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="flex gap-4">
+                    <div className="relative flex-shrink-0">
+                      <div className="bg-muted/40 rounded-md p-3">
+                        {newReportId ? (
+                          <Check className="h-6 w-6 text-green-500" />
+                        ) : (
+                          <FileText className="h-6 w-6 text-primary/80" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm mb-1">{uploadedFile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  {!isAnalyzing && !newReportId && (
+                    <Button onClick={handleAnalyze} size="sm" className="ml-auto">
+                      Analyze
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isAnalyzing && (
+              <div className="mt-6 text-center">
+                <div className="flex items-center justify-center mb-2">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <p className="text-sm font-medium">{statusMessage || "Analyzing..."}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">This may take a few moments. Please don't close this page.</p>
+              </div>
+            )}
+
+            {!isAnalyzing && newReportId && statusMessage && (
+              <div className="mt-6 text-center">
+                <Check className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                <p className="text-sm font-medium mb-2">{statusMessage}</p>
+                <Button onClick={() => handleViewReport(newReportId)}>View Results</Button>
+              </div>
+            )}
+
+            {!isAnalyzing && !newReportId && statusMessage && !uploadedFile && (
+              <div className="mt-6 text-center">
+                <p className="text-sm font-medium text-red-500">{statusMessage}</p>
+              </div>
+            )}
+
+
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="previous" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Previous Lab Reports</CardTitle>
+            <CardDescription>View your previously uploaded and analyzed lab reports.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingReports ? (
+              <div className="flex items-center justify-center h-40">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : previousReports.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No previous reports found.</p>
+            ) : (
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-4">
+                  {previousReports.map((report) => (
+                    <Card key={report.id} className="shadow-sm hover:shadow-md transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg leading-tight">
+                              {report.panels?.[0]?.name || "Lab Report"}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                              {report.panels?.[0]?.lab_name ? `${report.panels?.[0]?.lab_name} • ` : ''}
+                              Uploaded on {new Date(report.created_at).toLocaleDateString()}
+                            </CardDescription>
+                          </div>
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${report.status === 'completed'
+                              ? 'bg-green-100 text-green-700'
+                              : report.status === 'processing'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-700'
+                              }`}
+                          >
+                            {report.status}
+                          </span>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <p className="text-sm text-muted-foreground truncate">
+                          Original file: {report.original_filename}
+                        </p>
+                      </CardContent>
+                      <CardFooter className="pt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewReport(report.id)}
+                        >
+                          View Details
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  )
+}
+
+
 export default function LabUploadPage() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -33,8 +225,6 @@ export default function LabUploadPage() {
   const [loadingReports, setLoadingReports] = useState(true)
   const [currentUploadFilename, setCurrentUploadFilename] = useState<string | null>(null)
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const currentTab = searchParams.get('t') || 'upload'
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -79,7 +269,7 @@ export default function LabUploadPage() {
             setStatusMessage(statusMessages[mockStep % statusMessages.length])
           }
         }, 3000)
-        return
+        return () => clearInterval(pollInterval);
       }
 
       // Regular polling logic for non-zen files
@@ -115,7 +305,7 @@ export default function LabUploadPage() {
     return () => {
       if (pollInterval) clearInterval(pollInterval)
     }
-  }, [isAnalyzing, statusStep, currentUploadFilename])
+  }, [isAnalyzing, statusStep, currentUploadFilename, completeAnalysis])
 
   useEffect(() => {
     fetchReports()
@@ -193,10 +383,8 @@ export default function LabUploadPage() {
     }
   }
 
-  const handleTabChange = (value: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('t', value)
-    router.push(`?${params.toString()}`)
+  const handleViewReport = (reportId: string) => {
+    router.push(`/lab-results/${reportId}`)
   }
 
   return (
@@ -206,153 +394,20 @@ export default function LabUploadPage() {
         <p className="text-muted-foreground">Upload your lab reports and get AI-powered analysis</p>
       </div>
 
-      <Tabs
-        value={currentTab}
-        onValueChange={handleTabChange}
-        className="space-y-4"
-      >
-        <TabsList>
-          <TabsTrigger value="upload">Upload New Lab</TabsTrigger>
-          <TabsTrigger value="previous">Previous Labs</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="upload" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Lab Report</CardTitle>
-              <CardDescription>Upload a PDF or image of your lab report to get an AI-generated summary</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center relative">
-                <FileUp className="h-8 w-8 mb-4 text-muted-foreground" />
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Drag and drop your file here or click to browse</p>
-                  <p className="text-xs text-muted-foreground">Supports PDF, JPG, and PNG files up to 10MB</p>
-                </div>
-                <input
-                  type="file"
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={handleFileChange}
-                />
-              </div>
-
-              {uploadedFile && (
-                <div className="mt-4 p-6 border rounded-lg bg-card shadow-sm">
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4">
-                      <div className="relative flex-shrink-0">
-                        <div className="bg-muted/40 rounded-md p-3">
-                          {newReportId ? (
-                            <Check className="h-6 w-6 text-green-500" />
-                          ) : (
-                            <FileText className="h-6 w-6 text-primary/80" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="font-medium">{uploadedFile.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                        <div className="pt-3">
-                          {isAnalyzing && (
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                              <p className="text-sm">{statusMessage}</p>
-                            </div>
-                          )}
-                          {!isAnalyzing && statusMessage && (
-                            <p className="text-sm text-muted-foreground">{statusMessage}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {newReportId ? (
-                        <Button
-                          onClick={() => router.push(`/test-results/${newReportId}`)}
-                          className="px-4 font-medium"
-                        >
-                          View Results
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleAnalyze}
-                          disabled={isAnalyzing}
-                          className="px-4 font-medium"
-                        >
-                          {isAnalyzing ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Analyzing...
-                            </>
-                          ) : (
-                            "Analyze"
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="previous">
-          <Card>
-            <CardHeader>
-              <CardTitle>Previous Lab Reports</CardTitle>
-              <CardDescription>View your previously uploaded lab reports</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[400px]">
-                {loadingReports ? (
-                  <div className="flex items-center justify-center h-32">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : previousReports.length > 0 ? (
-                  <div className="space-y-4">
-                    {previousReports.map((report) => (
-                      <div key={report.id}>
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <p className="font-medium">{report.original_filename}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(report.created_at).toLocaleDateString()} • {report.panels[0]?.lab_name || 'Unknown Lab'}
-                            </p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {report.panels.map((panel, index) => (
-                                <span
-                                  key={index}
-                                  className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-primary/10 text-primary hover:bg-primary/20"
-                                >
-                                  {panel.name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <Button variant="outline" size="sm" onClick={() => router.push(`/test-results/${report.id}`)}>
-                            View
-                          </Button>
-                        </div>
-                        <Separator className="my-4" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-32 text-center">
-                    <FileText className="h-8 w-8 text-muted-foreground mb-4" />
-                    <h3 className="font-medium">No reports found</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Upload your first lab report to get started</p>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Suspense fallback={<div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /> Loading tabs...</div>}>
+        <LabUploadTabs
+          previousReports={previousReports}
+          loadingReports={loadingReports}
+          uploadedFile={uploadedFile}
+          isAnalyzing={isAnalyzing}
+          statusMessage={statusMessage}
+          newReportId={newReportId}
+          handleFileChange={handleFileChange}
+          handleAnalyze={handleAnalyze}
+          handleViewReport={handleViewReport}
+          currentUploadFilename={currentUploadFilename}
+        />
+      </Suspense>
     </div>
   )
 }
