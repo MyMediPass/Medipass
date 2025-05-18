@@ -166,10 +166,11 @@ export default function HealthNotesPage() {
         title: editTitle,
         content: editContent,
         tags: processedTags,
+        updatedAt: Date.now() // Explicitly set updatedAt on auto-save
       };
 
       try {
-        await db.transact(db.tx.healthNotes[selectedNote.id].update(notePayload));
+        await db.transact(db.tx.healthNotes[selectedNote.id].merge(notePayload));
         setSaveStatus("saved");
         // Update initial data ref to current saved state
         initialSelectedNoteDataRef.current = {
@@ -218,11 +219,14 @@ export default function HealthNotesPage() {
 
   const handleAddNoteSubmit = async (data: HealthNoteSubmitData) => {
     if (!clerkUser?.id) throw new Error("User not authenticated.")
+    const now = Date.now();
     const notePayload = {
       title: data.title,
       content: data.content,
       tags: data.tags || [],
       userId: clerkUser.id,
+      createdAt: now,      // Explicitly set createdAt
+      updatedAt: now       // Explicitly set updatedAt
     }
     try {
       const newNoteTx = db.tx.healthNotes[id()].update(notePayload);
@@ -466,9 +470,9 @@ export default function HealthNotesPage() {
               </div>
 
               <div className="text-xs text-muted-foreground mt-4 pt-2 border-t flex-shrink-0">
-                Created: {formatFullDate(selectedNote.$createdAt)}
-                {selectedNote.$updatedAt && selectedNote.$updatedAt !== selectedNote.$createdAt && (
-                  <span className="italic"> (Updated: {formatFullDate(selectedNote.$updatedAt)})</span>
+                Created: {formatFullDate(selectedNote.createdAt)}
+                {selectedNote.updatedAt && selectedNote.updatedAt !== selectedNote.createdAt && (
+                  <span className="italic"> (Updated: {formatFullDate(selectedNote.updatedAt)})</span>
                 )}
               </div>
 

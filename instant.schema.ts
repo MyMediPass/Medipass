@@ -25,7 +25,6 @@ const _schema = i.schema({
       calendarSync: i.boolean().optional(),
       healthSync: i.boolean().optional(),
       notifications: i.boolean().optional(),
-      // createdAt and updatedAt are automatically managed by InstantDB
     }),
     todos: i.entity({
       text: i.string(),
@@ -47,7 +46,6 @@ const _schema = i.schema({
       startDate: i.string(), // ISO date string
       purpose: i.string().optional(),
       endDate: i.string().optional(), // ISO date string
-      // createdAt and updatedAt are automatically managed by InstantDB
     }),
     appointments: i.entity({
       userId: i.string().indexed(),
@@ -61,13 +59,14 @@ const _schema = i.schema({
       type: i.string().indexed(), // e.g., "physical", "followup", "checkup"
       status: i.string().indexed(), // e.g., "upcoming", "completed", "cancelled"
       summary: i.string().optional(), // For past appointments
-      // createdAt and updatedAt are automatically managed by InstantDB
     }),
     healthNotes: i.entity({
       userId: i.string().indexed(),
       title: i.string(),
       content: i.string(),
-      tags: i.json().optional()
+      tags: i.json().optional(),
+      createdAt: i.number().optional(),
+      updatedAt: i.number().optional(),
     }),
   },
   rooms: {},
