@@ -142,6 +142,9 @@ export default function MedicationsClientPage({ user }: MedicationsClientPagePro
             throw new Error(errMsg);
         }
 
+        console.log("formData", formData);
+        console.log("medicationIdToEdit", medicationIdToEdit);
+
         const dataToSubmit: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'> = {
             userId: userId,
             name: formData.name!,
@@ -165,7 +168,7 @@ export default function MedicationsClientPage({ user }: MedicationsClientPagePro
                     const newId = id();
                     await db.transact(db.tx.medications[newId].update(dataToSubmit as any));
                 } else if (medicationIdToEdit) {
-                    await db.transact(db.tx.medications[medicationIdToEdit].update(dataToSubmit as any));
+                    await db.transact(db.tx.medications[medicationIdToEdit].merge(dataToSubmit as any));
                 }
                 resetDialogState();
             } catch (err: any) {
@@ -317,8 +320,10 @@ export default function MedicationsClientPage({ user }: MedicationsClientPagePro
     );
 }
 
-function mapMedicationToFormData(med: Medication): DialogFormData {
+// Helper function to map Medication entity to MedicationFormData for the dialog
+function mapMedicationToFormData(med: Medication): DialogFormData & { id: string } {
     return {
+        id: med.id,
         name: med.name,
         dosage: med.dosage || "",
         frequency: med.frequency || "",
