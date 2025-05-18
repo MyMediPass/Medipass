@@ -1,291 +1,344 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useMemo } from "react"
+import { useUser } from "@clerk/nextjs"
+import { id, InstaQLEntity } from "@instantdb/react"
+import { db, schema } from "@/db/instant"
+import { format, parseISO, differenceInDays, isValid } from "date-fns"
+import Link from "next/link"
+import { PlusCircle, Search, Tag, BookOpen, Edit3, Trash2, Loader2, LayoutList, LayoutGrid, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { StickyNote, Search, Plus, Edit, Trash, Calendar, MoreHorizontal } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { format } from "date-fns"
-import { getHealthNotes, Note } from "@/lib/health-notes"
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { HealthNoteFormDialog, HealthNoteSubmitData } from "@/components/health-notes/HealthNoteFormDialog"
+
+export type HealthNote = InstaQLEntity<typeof schema, "healthNotes">
+
+export type HealthNoteFormData = {
+  id?: string
+  title: string
+  content: string
+  tags?: string[] // Store as comma-separated string in form, then convert
+}
 
 export default function HealthNotesPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [notes, setNotes] = useState<Note[]>([])
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
-  const [newNote, setNewNote] = useState({
-    title: "",
-    content: "",
-    tags: "",
+  const { user: clerkUser, isSignedIn, isLoaded: isUserLoaded } = useUser()
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [activeFilters, setActiveFilters] = useState<string[]>([]) // For filtering by tags
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list") // For future view options
+
+  // Dialog state
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [formMode, setFormMode] = useState<"add" | "edit">("add")
+  const [editingNote, setEditingNote] = useState<HealthNoteSubmitData | null>(null)
+
+  const {
+    isLoading: isLoadingNotes,
+    error: notesError,
+    data: notesData,
+  } = db.useQuery({
+    healthNotes: {
+      $: {
+        where: { userId: clerkUser?.id || "" },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   })
 
-  // Fetch notes when component mounts
-  useEffect(() => {
-    // In a real app, we would get the userId from auth context/session
-    const userId = "user123" // Placeholder userId
-    const fetchedNotes = getHealthNotes(userId)
-    setNotes(fetchedNotes)
-  }, [])
+  const allNotes: HealthNote[] = notesData?.healthNotes || []
 
-  const filteredNotes = notes.filter((note) => {
-    return (
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
-  })
+  const filteredNotes = useMemo(() => {
+    return allNotes
+      .filter(note => {
+        const searchMatch =
+          note.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          note.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          note.tags?.some((tag: string) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        const tagMatch =
+          activeFilters.length === 0 ||
+          activeFilters.every((filterTag: string) => note.tags?.includes(filterTag))
+        return searchMatch && tagMatch
+      })
+      .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
+  }, [allNotes, searchTerm, activeFilters])
 
-  const handleCreateNote = () => {
-    if (!newNote.title || !newNote.content) return
+  const selectedNote = useMemo(() => {
+    if (!selectedNoteId) return null
+    return allNotes.find(note => note.id === selectedNoteId)
+  }, [allNotes, selectedNoteId])
 
-    const tagsArray = newNote.tags ? newNote.tags.split(",").map((tag) => tag.trim().toLowerCase()) : []
+  const allTags = useMemo(() => {
+    const tagsSet = new Set<string>()
+    allNotes.forEach(note => note.tags?.forEach((tag: string) => tagsSet.add(tag)))
+    return Array.from(tagsSet).sort()
+  }, [allNotes])
 
-    const newNoteObj: Note = {
-      id: notes.length > 0 ? Math.max(...notes.map((note) => note.id)) + 1 : 1,
-      title: newNote.title,
-      content: newNote.content,
-      date: new Date(),
-      tags: tagsArray,
-    }
+  const handleSelectNote = (noteId: string) => {
+    setSelectedNoteId(noteId)
+  }
 
-    setNotes([newNoteObj, ...notes])
-    setNewNote({
-      title: "",
-      content: "",
-      tags: "",
+  const openAddNoteDialog = () => {
+    setFormMode("add")
+    setEditingNote(null)
+    setIsFormOpen(true)
+  }
+
+  const openEditNoteDialog = (note: HealthNote) => {
+    setFormMode("edit")
+    setEditingNote({
+      id: note.id!,
+      title: note.title || "",
+      content: note.content || "",
+      tags: note.tags || [],
     })
-    setIsCreating(false)
+    setIsFormOpen(true)
   }
 
-  const handleDeleteNote = (id: number) => {
-    setNotes(notes.filter((note) => note.id !== id))
-    if (selectedNote && selectedNote.id === id) {
-      setSelectedNote(null)
+  const handleDialogSubmit = async (data: HealthNoteSubmitData, noteIdToEdit?: string) => {
+    if (!clerkUser?.id) {
+      throw new Error("User not authenticated.")
+    }
+
+    const notePayload: {
+      title: string
+      content: string
+      tags?: string[]
+      userId: string
+      createdAt?: number
+      updatedAt?: number
+    } = {
+      title: data.title,
+      content: data.content,
+      tags: data.tags || [],
+      userId: clerkUser.id,
+    }
+
+    try {
+      if (noteIdToEdit) {
+        notePayload.updatedAt = Date.now()
+        delete notePayload.createdAt
+        await db.transact(db.tx.healthNotes[noteIdToEdit].update(notePayload))
+      } else {
+        notePayload.createdAt = Date.now()
+        delete notePayload.updatedAt
+        await db.transact(db.tx.healthNotes[id()].update(notePayload))
+      }
+      setIsFormOpen(false)
+    } catch (error) {
+      console.error("Failed to save note:", error)
+      throw error
     }
   }
 
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm("Are you sure you want to delete this note?")) return
+    try {
+      await db.transact(db.tx.healthNotes[noteId].delete())
+      if (selectedNoteId === noteId) {
+        setSelectedNoteId(null) // Clear selection if deleted note was selected
+      }
+    } catch (error) {
+      console.error("Failed to delete note:", error)
+      // TODO: Show error to user
+    }
+  }
+
+  const toggleTagFilter = (tag: string) => {
+    setActiveFilters(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    )
+  }
+
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return ""
+    const date = new Date(timestamp)
+    if (!isValid(date)) return ""
+    const diff = differenceInDays(new Date(), date)
+    if (diff < 1) return format(date, "p") // today: time
+    if (diff < 7) return format(date, "eee") // this week: day name
+    return format(date, "MMM d") // older: Month Day
+  }
+
+  if (!isUserLoaded) {
+    return <div className="flex justify-center items-center min-h-[calc(100vh-8rem)]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  }
+
+  if (!isSignedIn) {
+    return <div className="text-center py-10">Please sign in to view your health notes.</div>
+  }
+
+  // Main layout: Sidebar for notes list, Main content for selected note or placeholder
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Health Notes</h1>
-          <p className="text-sm md:text-base text-muted-foreground">
-            Keep track of your health observations and thoughts
-          </p>
-        </div>
-        <Dialog open={isCreating} onOpenChange={setIsCreating}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Note
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Create New Health Note</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <label htmlFor="title" className="text-sm font-medium">
-                  Title
-                </label>
-                <Input
-                  id="title"
-                  placeholder="Enter note title"
-                  value={newNote.title}
-                  onChange={(e) => setNewNote({ ...newNote, title: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <label htmlFor="content" className="text-sm font-medium">
-                  Content
-                </label>
-                <Textarea
-                  id="content"
-                  placeholder="Write your health note here..."
-                  rows={6}
-                  value={newNote.content}
-                  onChange={(e) => setNewNote({ ...newNote, content: e.target.value })}
-                />
-              </div>
-              <div className="grid gap-2">
-                <label htmlFor="tags" className="text-sm font-medium">
-                  Tags (comma separated)
-                </label>
-                <Input
-                  id="tags"
-                  placeholder="e.g., blood pressure, medication, exercise"
-                  value={newNote.tags}
-                  onChange={(e) => setNewNote({ ...newNote, tags: e.target.value })}
-                />
-              </div>
+    <TooltipProvider delayDuration={100}>
+      <div className="flex h-[calc(100vh-var(--header-height,4rem)-2rem)] border rounded-lg overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-1/3 min-w-[280px] max-w-[400px] border-r bg-slate-50/50 dark:bg-slate-900/50 flex flex-col">
+          <div className="p-3 border-b">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold">My Notes</h2>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openAddNoteDialog}>
+                <PlusCircle className="h-5 w-5" />
+                <span className="sr-only">New Note</span>
+              </Button>
             </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button onClick={handleCreateNote}>Save Note</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="md:w-1/3 space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Search Notes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search by title, content, or tags..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">My Notes</CardTitle>
-                <p className="text-xs text-muted-foreground">{filteredNotes.length} notes</p>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-20rem)]">
-                {filteredNotes.length > 0 ? (
-                  <div className="divide-y">
-                    {filteredNotes.map((note) => (
-                      <div
-                        key={note.id}
-                        className={`p-4 cursor-pointer hover:bg-accent/50 transition-colors ${selectedNote?.id === note.id ? "bg-accent" : ""
-                          }`}
-                        onClick={() => setSelectedNote(note)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-sm font-medium">{note.title}</h3>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <p className="text-xs text-muted-foreground">{format(note.date, "MMM d, yyyy")}</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{note.content}</p>
-                          </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDeleteNote(note.id)}>
-                                <Trash className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center p-4">
-                    <StickyNote className="h-8 w-8 text-muted-foreground mb-4" />
-                    <h3 className="font-medium">No notes found</h3>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {searchQuery ? "Try adjusting your search" : "Create your first health note"}
-                    </p>
-                  </div>
-                )}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search notes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            {allTags.length > 0 && (
+              <ScrollArea className="h-16 mt-2">
+                <div className="flex flex-wrap gap-1 py-1">
+                  {allTags.map((tag: string) => (
+                    <Button
+                      key={tag}
+                      variant={activeFilters.includes(tag) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleTagFilter(tag)}
+                      className="text-xs h-6 px-2"
+                    >
+                      {tag}
+                    </Button>
+                  ))}
+                </div>
               </ScrollArea>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </div>
 
-        <div className="flex-1">
-          <Card className="h-[calc(100vh-12rem)]">
-            {selectedNote ? (
-              <>
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-xl">{selectedNote.title}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{format(selectedNote.date, "MMMM d, yyyy")}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteNote(selectedNote.id)}
-                      >
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[calc(100vh-20rem)]">
-                    <div className="space-y-4">
-                      <p className="whitespace-pre-line">{selectedNote.content}</p>
-
-                      {selectedNote.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t">
-                          {selectedNote.tags.map((tag, index) => (
-                            <Badge key={index} variant="outline" className="bg-accent">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <StickyNote className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium">No Note Selected</h3>
-                <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                  Select a note from the list to view its details, or create a new note to get started.
-                </p>
-                <Button className="mt-4" onClick={() => setIsCreating(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Note
-                </Button>
+          <ScrollArea className="flex-grow">
+            {isLoadingNotes && !notesData && (
+              <div className="p-4 text-center text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Loading notes...
               </div>
             )}
-          </Card>
+            {notesError && (
+              <div className="p-4 text-center text-red-500">
+                <AlertTriangle className="h-6 w-6 mx-auto mb-2 text-red-500" />
+                Error: {(notesError as any).message}
+              </div>
+            )}
+            {!isLoadingNotes && filteredNotes.length === 0 && (
+              <div className="p-6 text-center text-muted-foreground">
+                <BookOpen className="h-10 w-10 mx-auto mb-3 text-gray-400" />
+                <p className="font-medium">No notes found.</p>
+                {searchTerm || activeFilters.length > 0 ? (
+                  <p className="text-sm">Try adjusting your search or filters.</p>
+                ) : (
+                  <p className="text-sm">
+                    <Button variant="link" onClick={openAddNoteDialog} className="p-0 h-auto text-sm">Create your first note</Button>
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="space-y-1 p-2">
+              {filteredNotes.map(note => (
+                <button
+                  key={note.id}
+                  onClick={() => handleSelectNote(note.id!)}
+                  className={cn(
+                    "w-full text-left p-3 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none",
+                    selectedNoteId === note.id && "bg-primary/10 hover:bg-primary/15 dark:bg-primary/20 dark:hover:bg-primary/25"
+                  )}
+                >
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-medium text-sm truncate">{note.title || "Untitled Note"}</h3>
+                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{formatDate(note.updatedAt || note.createdAt)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                    {note.content ? (note.content.substring(0, 100) + (note.content.length > 100 ? "..." : "")) : <i>No content</i>}
+                  </p>
+                  {note.tags && note.tags.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {note.tags.slice(0, 3).map((tag: string) => (
+                        <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0.5">{tag}</Badge>
+                      ))}
+                      {note.tags.length > 3 && <Badge variant="secondary" className="text-xs px-1.5 py-0.5">+{note.tags.length - 3}</Badge>}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          {selectedNote ? (
+            <div className="max-w-3xl mx-auto">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedNote.tags && selectedNote.tags.map((tag: string) => (
+                    <Badge key={tag} variant="outline" className="font-normal">{tag}</Badge>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openEditNoteDialog(selectedNote)}>
+                    <Edit3 className="h-4 w-4 mr-1.5" /> Edit
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteNote(selectedNote.id!)}>
+                    <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+                  </Button>
+                </div>
+              </div>
+              <h1 className="text-3xl font-bold mb-3 break-words">{selectedNote.title || "Untitled Note"}</h1>
+              <div className="text-xs text-muted-foreground mb-6">
+                Created: {selectedNote.createdAt ? format(new Date(selectedNote.createdAt), "PPPp") : "N/A"}
+                {selectedNote.updatedAt && selectedNote.updatedAt !== selectedNote.createdAt && (
+                  <span className="italic"> (Updated: {format(new Date(selectedNote.updatedAt), "PPPp")})</span>
+                )}
+              </div>
+
+              <Separator className="my-6" />
+
+              {/* Using a div with whitespace-pre-wrap to render newlines from textarea */}
+              <div className="prose dark:prose-invert max-w-none">
+                <p className="whitespace-pre-wrap text-base leading-relaxed">
+                  {selectedNote.content}
+                </p>
+              </div>
+
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+              <BookOpen className="h-16 w-16 mb-4 text-gray-400" />
+              <p className="text-xl font-medium">Select a note to view</p>
+              <p>Or, <Button variant="link" onClick={openAddNoteDialog} className="p-0 h-auto text-xl">create a new one</Button> to get started.</p>
+            </div>
+          )}
+        </div>
+
+        {isFormOpen && clerkUser?.id && (
+          <HealthNoteFormDialog
+            isOpen={isFormOpen}
+            onOpenChange={setIsFormOpen}
+            mode={formMode}
+            initialData={editingNote || undefined}
+            onSubmitAction={handleDialogSubmit}
+            userId={clerkUser.id}
+          />
+        )}
       </div>
-    </div>
+    </TooltipProvider>
   )
+}
+
+// Helper function (cn) if not already globally available
+export function cn(...inputs: (string | undefined | null | false)[]): string {
+  return inputs.filter(Boolean).join(" ")
 }

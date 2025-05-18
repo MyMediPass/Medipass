@@ -63,6 +63,14 @@ const _schema = i.schema({
       summary: i.string().optional(), // For past appointments
       // createdAt and updatedAt are automatically managed by InstantDB
     }),
+    healthNotes: i.entity({
+      userId: i.string().indexed(),
+      title: i.string(),
+      content: i.string(),
+      tags: i.array(i.string()).optional(),
+      createdAt: i.number(), // Explicitly adding, though InstantDB can auto-manage
+      updatedAt: i.number().optional(), // Explicitly adding, though InstantDB can auto-manage
+    }),
   },
   rooms: {},
 });
