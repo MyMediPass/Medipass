@@ -20,9 +20,9 @@ export default function SignUpPage() {
                             headerSubtitle: "hidden",
                             socialButtonsBlockButton: "w-full justify-center",
                             formButtonPrimary: "w-full bg-[hsl(165,70%,25%)] hover:bg-[hsl(165,70%,30%)]",
-                            footerAction: "hidden"
                         }
                     }}
+                    signInForceRedirectUrl="/sign-in"
                 />
 
                 {/* Footer */}

@@ -1,13 +1,32 @@
+'use client'
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, FileText, HeartPulse, MessageSquare, Shield, Stethoscope } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { getUser } from "@/lib/auth"
 
-export default async function Home() {
-  const user = await getUser()
-  const isAuthenticated = !!user
+export default function Home() {
+  const [user, setUser] = useState<any>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userData = await getUser()
+      setUser(userData)
+      setIsAuthenticated(!!userData)
+    }
+    fetchUser()
+  }, [])
+
+  const scrollToAbout = () => {
+    const aboutSection = document.getElementById('about')
+    if (aboutSection) {
+      aboutSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -42,22 +61,21 @@ export default async function Home() {
                   {isAuthenticated ? "Visit Your Dashboard" : "Get Started"}
                 </Button>
               </Link>
-              <Link href={isAuthenticated ? "/dashboard" : "/sign-in"}>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto bg-white/10 text-white hover:bg-white/20 border-white/20"
-                >
-                  Learn More
-                </Button>
-              </Link>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto bg-white/10 text-white hover:bg-white/20 border-white/20"
+                onClick={scrollToAbout}
+              >
+                Learn More
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
+      <section id="about" className="w-full py-12 md:py-24 lg:py-32 bg-background">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
             <div className="space-y-2">
