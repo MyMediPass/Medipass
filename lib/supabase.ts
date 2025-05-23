@@ -15,6 +15,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 // Ensure SUPABASE_SERVICE_ROLE_KEY is set in your environment variables.
 let serviceRoleClient: SupabaseClient | null = null;
 
+console.log(process.env.SUPABASE_SERVICE_ROLE_KEY, process.env.NEXT_PUBLIC_SUPABASE_URL)
+
 export const createSupabaseServiceRoleClient = () => {
   if (serviceRoleClient) {
     return serviceRoleClient;
