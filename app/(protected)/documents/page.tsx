@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DocumentUpload } from "@/components/documents/DocumentUpload"
+import { DocumentViewer } from "@/components/documents/DocumentViewer"
+import { DocumentThumbnail } from "@/components/documents/DocumentThumbnail"
 import { UserDocument, DocumentCategory, CATEGORY_CONFIG } from "@/lib/types/documents"
 
 // Utility function moved here since we can't import from services
@@ -31,6 +33,8 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<UserDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedDocument, setSelectedDocument] = useState<UserDocument | null>(null)
+  const [isViewerOpen, setIsViewerOpen] = useState(false)
 
   const fetchDocuments = async () => {
     try {
@@ -155,6 +159,16 @@ export default function DocumentsPage() {
     }
   }
 
+  const handleViewDocument = (document: UserDocument) => {
+    setSelectedDocument(document)
+    setIsViewerOpen(true)
+  }
+
+  const closeViewer = () => {
+    setIsViewerOpen(false)
+    setSelectedDocument(null)
+  }
+
   const handleUploadComplete = (documentIds: string[]) => {
     // Refresh the documents list
     fetchDocuments()
@@ -272,16 +286,13 @@ export default function DocumentsPage() {
             ) : filteredDocuments.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pr-4">
                 {filteredDocuments.map((document) => (
-                  <Card key={document.id}>
+                  <Card key={document.id} className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardContent className="p-3">
-                      <div className="flex items-center justify-center h-32 bg-muted rounded-md mb-3">
-                        {document.file_type.startsWith('image/') ? (
-                          <div className="w-full h-full bg-gray-100 rounded flex items-center justify-center">
-                            <ImageIcon className="h-12 w-12 text-gray-400" />
-                          </div>
-                        ) : (
-                          <FileText className="h-12 w-12 text-muted-foreground" />
-                        )}
+                      <div
+                        className="h-32 mb-3 cursor-pointer"
+                        onClick={() => handleViewDocument(document)}
+                      >
+                        <DocumentThumbnail document={document} className="w-full h-full" />
                       </div>
 
                       <div className="space-y-1 flex-1">
@@ -312,7 +323,12 @@ export default function DocumentsPage() {
                       </div>
 
                       <div className="flex gap-1 mt-3 pt-3 border-t">
-                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs flex-1"
+                          onClick={() => handleViewDocument(document)}
+                        >
                           <Eye className="h-3 w-3 mr-1" />
                           View
                         </Button>
@@ -357,12 +373,15 @@ export default function DocumentsPage() {
                 </div>
               ) : filteredDocuments.length > 0 ? (
                 filteredDocuments.map((document) => (
-                  <Card key={document.id}>
+                  <Card key={document.id} className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardContent className="p-3">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
-                          <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                            {getDocumentIcon(document.file_type)}
+                          <div
+                            className="h-16 w-16 cursor-pointer"
+                            onClick={() => handleViewDocument(document)}
+                          >
+                            <DocumentThumbnail document={document} className="w-full h-full" />
                           </div>
                           <div>
                             <p className="text-sm font-medium">{document.display_name}</p>
@@ -394,7 +413,12 @@ export default function DocumentsPage() {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleViewDocument(document)}
+                          >
                             <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
@@ -431,6 +455,13 @@ export default function DocumentsPage() {
           </ScrollArea>
         </TabsContent>
       </Tabs>
+
+      {/* Document Viewer Modal */}
+      <DocumentViewer
+        document={selectedDocument}
+        isOpen={isViewerOpen}
+        onClose={closeViewer}
+      />
     </div>
   )
 }
