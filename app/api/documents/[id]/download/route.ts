@@ -12,7 +12,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const documentId = params.id;
+        const { id: documentId } = await params;
 
         // Verify user owns the document
         const document = await documentService.getDocument(user.id, documentId);
