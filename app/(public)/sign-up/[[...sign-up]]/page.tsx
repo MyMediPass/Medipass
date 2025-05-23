@@ -1,6 +1,6 @@
-import { SignIn } from "@clerk/nextjs";
+import { SignUp } from "@clerk/nextjs";
 
-export default function SignInPage() {
+export default function SignUpPage() {
     return (
         <div className="h-full flex-1 bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center p-4">
             <div className="w-full max-w-md mx-auto items-center flex flex-col">
@@ -13,8 +13,8 @@ export default function SignInPage() {
                     <p className="text-gray-600 text-sm">Your secure health connection</p>
                 </div>
 
-                {/* Sign In Form */}
-                <SignIn
+                {/* Sign Up Form */}
+                <SignUp
                     appearance={{
                         elements: {
                             headerSubtitle: "hidden",
@@ -40,4 +40,4 @@ export default function SignInPage() {
             </div>
         </div>
     )
-}
+} 

@@ -37,12 +37,12 @@ export default async function Home() {
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row justify-center">
-              <Link href={isAuthenticated ? "/dashboard" : "/register"}>
+              <Link href={isAuthenticated ? "/dashboard" : "/sign-up"}>
                 <Button size="lg" className="w-full sm:w-auto">
                   {isAuthenticated ? "Visit Your Dashboard" : "Get Started"}
                 </Button>
               </Link>
-              <Link href={isAuthenticated ? "/dashboard" : "/login"}>
+              <Link href={isAuthenticated ? "/dashboard" : "/sign-in"}>
                 <Button
                   size="lg"
                   variant="outline"
@@ -153,7 +153,7 @@ export default async function Home() {
               </p>
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">
-              <Link href="/register">
+              <Link href="/sign-up">
                 <Button size="lg" className="w-full min-[400px]:w-auto">
                   Sign Up Now
                 </Button>
