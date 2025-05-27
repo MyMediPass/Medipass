@@ -10,10 +10,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AppSidebar variant="inset" />
         <SidebarInset>
           <SiteHeader />
-          <div className="flex flex-1 flex-col max-w-screen overflow-x-hidden">
-            <div className="@container/main flex flex-1 flex-col gap-2 md:p-4">
-              {children}
-            </div>
+          <div className="flex flex-1 flex-col gap-2 p-4 w-screen md:max-w-none">
+            {children}
           </div>
         </SidebarInset>
       </SidebarProvider>

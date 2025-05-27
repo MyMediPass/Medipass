@@ -125,16 +125,15 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full p-2 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Heart className="h-5 w-5 text-blue-500" />
           <h1 className="text-xl font-semibold text-gray-900">My Health Documents</h1>
         </div>
         <Button
           onClick={() => setShowUpload(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white"
+          className="bg-primary hover:bg-primary/90 text-white"
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Document
