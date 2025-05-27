@@ -121,7 +121,7 @@ export function DocumentViewer({ document, isOpen, onClose }: DocumentViewerProp
                 <p className="text-sm text-muted-foreground mb-4">
                     This document type cannot be previewed in the browser.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 pr-8">
                     <Button onClick={handleDownload}>
                         <Download className="h-4 w-4 mr-2" />
                         Download
@@ -141,7 +141,7 @@ export function DocumentViewer({ document, isOpen, onClose }: DocumentViewerProp
                 <DialogHeader>
                     <div className="flex items-center justify-between">
                         <DialogTitle className="truncate">{document?.display_name}</DialogTitle>
-                        <div className="flex gap-2 ml-4">
+                        <div className="flex gap-2 ml-4 pr-8">
                             <Button variant="outline" size="sm" onClick={handleDownload}>
                                 <Download className="h-4 w-4" />
                             </Button>

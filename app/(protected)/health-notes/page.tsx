@@ -304,7 +304,7 @@ export default function HealthNotesPage() {
   return (
     <TooltipProvider delayDuration={100}>
       <div className={cn(
-        "flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2rem)] border rounded-lg overflow-hidden",
+        "flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2rem)] md:border md:rounded-lg overflow-hidden",
         saveStatus === 'saving' ? "pointer-events-none opacity-75" : null // Directly use ternary for conditional class
       )}>
         {/* Sidebar */}
@@ -415,7 +415,7 @@ export default function HealthNotesPage() {
 
         {/* Main Content Area - Now always editable if a note is selected */}
         <div className={cn(
-          "flex-1 p-6 overflow-y-auto bg-white dark:bg-slate-950",
+          "flex-1 p-2 md:p-6 overflow-y-auto bg-white dark:bg-slate-950",
           !selectedNoteId && "hidden md:flex md:items-center md:justify-center" // Show placeholder on desktop if no note selected
         )}>
           {selectedNote ? (
@@ -441,7 +441,7 @@ export default function HealthNotesPage() {
               </div>
 
               {/* Directly Editable Fields */}
-              <div className="flex-grow overflow-y-auto pr-2 space-y-4"> {/* Added pr-2 for scrollbar */}
+              <div className="flex-grow overflow-y-auto space-y-4">
                 <Input
                   placeholder="Untitled Note"
                   value={editTitle}
