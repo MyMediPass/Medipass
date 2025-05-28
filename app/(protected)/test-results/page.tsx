@@ -1,542 +1,634 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileText, Search, Filter, ChevronRight, TrendingUp, Brain, Loader2, ExternalLink, Plus, FileUp, Check, Clock } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { useState, useCallback, useRef } from "react"
+import { id, InstaQLEntity } from "@instantdb/react"
+import { db, schema } from "@/db/instant"
+import { format } from "date-fns"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+    Upload,
+    FileText,
+    Loader2,
+    CheckCircle,
+    AlertCircle,
+    Eye,
+    Download,
+    ChevronDown,
+    ChevronRight,
+    FileImage,
+    FileSpreadsheet,
+    Calendar,
+    User,
+    Activity,
+    TrendingUp,
+    AlertTriangle,
+    Trash2,
+    MoreHorizontal
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts"
-import { createBrowserClient } from "@supabase/ssr"
-import { useRouter } from "next/navigation"
-import TestPanel from "@/components/TestPanel"
-import TrendDialog from "@/components/TrendDialog"
-import AIInterpretationDialog from "@/components/AIInterpretationDialog"
-import { toast } from "sonner"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Separator } from "@/components/ui/separator"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
-interface TestResult {
-  test_name: string
-  result_value: string | number
-  units: string | null
-  flag: string | null
-  reference_range: string | null
-  is_calculated: boolean
-}
+// Type for lab reports with InstantDB fields
+export type LabReport = InstaQLEntity<typeof schema, "labReports"> & {
+    $createdAt?: number;
+    $updatedAt?: number;
+    file?: InstaQLEntity<typeof schema, "$files">;
+};
 
-interface Panel {
-  id: string
-  name: string
-  reported_at: string | null
-  lab_name: string | null
-  status: string
-  test_results: TestResult[]
-  report_id: string
-  report_created_at: string
-}
+// JSON Viewer Component for structured transcription data
+function JsonViewer({ data, title }: { data: any; title: string }) {
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
 
-interface LabReportEntry {
-  id: string;
-  created_at: string;
-  original_filename: string;
-  status: string;
-  panels: Array<{ name: string; lab_name: string | null }>;
-}
-
-interface HistoricalDataPoint {
-  created_at: string
-  result_value: string | number
-}
-
-export default function TestResultsPage() {
-  const [panels, setPanels] = useState<Panel[]>([])
-  const [labReports, setLabReports] = useState<LabReportEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showTrendDialog, setShowTrendDialog] = useState(false)
-  const [showAIDialog, setShowAIDialog] = useState(false)
-  const [selectedResultName, setSelectedResultName] = useState("")
-  const [selectedResultUnit, setSelectedResultUnit] = useState("")
-  const [selectedResultData, setSelectedResultData] = useState<any[]>([])
-  const [selectedResultInterpretation, setSelectedResultInterpretation] = useState("")
-  const [expandedPanels, setExpandedPanels] = useState<Set<string>>(new Set())
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [statusMessage, setStatusMessage] = useState<string | null>(null)
-  const [currentUploadFilename, setCurrentUploadFilename] = useState<string | null>(null)
-  const [newReportId, setNewReportId] = useState<string | null>(null)
-  const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      const [panelsResponse, labReportsResponse] = await Promise.all([
-        supabase
-          .from('panels')
-          .select(`
-            id,
-            name,
-            reported_at,
-            lab_name,
-            status,
-            test_results (
-              test_name,
-              result_value,
-              units,
-              flag,
-              reference_range,
-              is_calculated
-            ),
-            report_id,
-            lab_reports!inner (
-              created_at
-            )
-          `)
-          .order('reported_at', { ascending: false }),
-        user ? supabase
-          .from('lab_reports')
-          .select(`
-            id,
-            created_at,
-            original_filename,
-            status,
-            panels (
-              name,
-              lab_name
-            )
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }) : Promise.resolve({ data: [], error: null })
-      ]);
-
-      if (panelsResponse.error) throw panelsResponse.error;
-      const transformedPanels: Panel[] = (panelsResponse.data as any[]).map(panel => ({
-        id: panel.id,
-        name: panel.name,
-        reported_at: panel.reported_at,
-        lab_name: panel.lab_name,
-        status: panel.status,
-        test_results: panel.test_results,
-        report_id: panel.report_id,
-        report_created_at: panel.lab_reports?.created_at || ''
-      }));
-      setPanels(transformedPanels);
-
-      if (labReportsResponse.error) throw labReportsResponse.error;
-      setLabReports((labReportsResponse.data as LabReportEntry[]) || []);
-
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
+    const toggleSection = (key: string) => {
+        const newExpanded = new Set(expandedSections)
+        if (newExpanded.has(key)) {
+            newExpanded.delete(key)
+        } else {
+            newExpanded.add(key)
+        }
+        setExpandedSections(newExpanded)
     }
-  }, [supabase]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setUploadedFile(e.target.files[0])
-      setStatusMessage(null)
-      setNewReportId(null)
-      setCurrentUploadFilename(null)
-    }
-  }
-
-  const handleAnalyze = async () => {
-    if (!uploadedFile) return
-
-    setIsAnalyzing(true)
-    setCurrentUploadFilename(uploadedFile.name)
-    setNewReportId(null);
-
-    const formData = new FormData()
-    formData.append('file', uploadedFile)
-
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload and processing failed')
-      }
-
-      toast.success(`Report "${result.fileName}" processed successfully!`);
-      setNewReportId(result.reportId);
-      fetchData();
-      setUploadedFile(null);
-      setCurrentUploadFilename(null);
-
-    } catch (error: any) {
-      console.error('Analysis request failed:', error)
-      toast.error(error.message || 'An unknown error occurred.');
-    } finally {
-      setIsAnalyzing(false)
-    }
-  }
-
-  const togglePanel = (panelId: string) => {
-    setExpandedPanels(prev => {
-      const next = new Set(prev)
-      if (next.has(panelId)) {
-        next.delete(panelId)
-      } else {
-        next.add(panelId)
-      }
-      return next
-    })
-  }
-
-  const getStatusIndicator = (flag: string | null | undefined) => {
-    if (!flag || flag.trim() === "") {
-      return (
-        <div className="flex items-center">
-          <div className="text-xs font-medium text-green-600 mr-1">IN RANGE</div>
-          <div className="w-16 h-2 bg-gray-200 rounded-full">
-            <div className="h-2 bg-blue-400 rounded-full w-8 relative">
-              <div className="absolute w-1.5 h-1.5 bg-black rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-            </div>
-          </div>
-        </div>
-      )
-    }
-    switch (flag.toLowerCase()) {
-      case "h":
-      case "high":
-        return (
-          <div className="flex items-center">
-            <div className="text-xs font-medium text-red-600 mr-1">HIGH</div>
-            <div className="w-16 h-2 bg-gray-200 rounded-full">
-              <div className="h-2 bg-red-400 rounded-full w-14 relative">
-                <div className="absolute w-1.5 h-1.5 bg-black rounded-full top-1/2 right-1 transform -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
-          </div>
-        )
-      case "l":
-      case "low":
-        return (
-          <div className="flex items-center">
-            <div className="text-xs font-medium text-red-600 mr-1">LOW</div>
-            <div className="w-16 h-2 bg-gray-200 rounded-full">
-              <div className="h-2 bg-red-400 rounded-full w-2 relative">
-                <div className="absolute w-1.5 h-1.5 bg-black rounded-full top-1/2 left-1 transform -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
-          </div>
-        )
-      default:
-        return (
-          <div className="flex items-center">
-            <div className="text-xs font-medium text-green-600 mr-1">IN RANGE</div>
-            <div className="w-16 h-2 bg-gray-200 rounded-full">
-              <div className="h-2 bg-blue-400 rounded-full w-8 relative">
-                <div className="absolute w-1.5 h-1.5 bg-black rounded-full top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
-              </div>
-            </div>
-          </div>
-        )
-    }
-  }
-
-  const handleShowTrend = async (testName: string, unit: string) => {
-    try {
-      const { data: historicalData, error } = await supabase
-        .from('test_results')
-        .select('result_value, created_at')
-        .eq('test_name', testName)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      const formattedData = (historicalData as HistoricalDataPoint[]).map(item => ({
-        date: new Date(item.created_at).toLocaleDateString(),
-        value: parseFloat(item.result_value as string)
-      }))
-
-      if (formattedData.length <= 1) {
-        const syntheticData = generateSyntheticHistoricalData(formattedData[0]);
-        setSelectedResultData([...syntheticData, ...formattedData]);
-      } else {
-        setSelectedResultData(formattedData);
-      }
-
-      setSelectedResultName(testName)
-      setSelectedResultUnit(unit)
-      setShowTrendDialog(true)
-    } catch (error) {
-      console.error('Error fetching historical data:', error)
-    }
-  }
-
-  const generateSyntheticHistoricalData = (actualDataPoint: { date: string, value: number }) => {
-    if (!actualDataPoint) return [];
-
-    const syntheticData = [];
-    const actualDate = new Date(actualDataPoint.date);
-    const actualValue = actualDataPoint.value;
-
-    for (let i = 1; i <= Math.floor(Math.random() * 2) + 2; i++) {
-      const pastDate = new Date(actualDate);
-      pastDate.setDate(pastDate.getDate() - (30 + Math.floor(Math.random() * 60)));
-      const randomVariation = (Math.random() * 0.3) - 0.15;
-      const syntheticValue = actualValue * (1 + randomVariation);
-      syntheticData.push({
-        date: pastDate.toLocaleDateString(),
-        value: parseFloat(syntheticValue.toFixed(2)),
-        isSynthetic: true
-      });
-    }
-    return syntheticData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }
-
-  const handleShowAIInterpretation = async (testName: string) => {
-    try {
-      setSelectedResultName(testName)
-      setSelectedResultInterpretation("Interpretation to be built")
-      setShowAIDialog(true)
-    } catch (error) {
-      console.error('Error fetching AI interpretation:', error)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">Test Results</h1>
-          <p className="text-muted-foreground">View your latest test results and track changes over time</p>
-        </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Lab Report
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Upload Lab Report</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 py-4">
-              {!isAnalyzing && !newReportId && (
-                <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 text-center relative">
-                  <FileUp className="h-8 w-8 mb-4 text-muted-foreground" />
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Drag and drop your file here or click to browse</p>
-                    <p className="text-xs text-muted-foreground">Supports PDF, JPG, and PNG files up to 10MB</p>
-                  </div>
-                  <input
-                    type="file"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileChange}
-                  />
+    const renderValue = (value: any, key: string, depth: number = 0): React.ReactNode => {
+        if (value === null || value === undefined) {
+            return (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                    </span>
+                    <span className="text-muted-foreground italic">n/a</span>
                 </div>
-              )}
+            )
+        }
 
-              {uploadedFile && !isAnalyzing && !newReportId && (
-                <div className="mt-4 p-6 border rounded-lg bg-card shadow-sm">
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-4">
-                      <div className="relative flex-shrink-0">
-                        <div className="bg-muted/40 rounded-md p-3">
-                          <FileText className="h-6 w-6 text-primary/80" />
+        if (typeof value === 'boolean') {
+            return (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                    </span>
+                    <span className="text-blue-600">{value.toString()}</span>
+                </div>
+            )
+        }
+
+        if (typeof value === 'number') {
+            return (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                    </span>
+                    <span className="text-green-600">{value}</span>
+                </div>
+            )
+        }
+
+        if (typeof value === 'string') {
+            return (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                    </span>
+                    <span className="text-gray-900">{value}</span>
+                </div>
+            )
+        }
+
+        if (Array.isArray(value)) {
+            if (value.length === 0) {
+                return (
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-700">
+                            {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                        </span>
+                        <span className="text-muted-foreground italic">n/a</span>
+                    </div>
+                )
+            }
+
+            const sectionKey = `${key}-${depth}`
+            const isExpanded = expandedSections.has(sectionKey)
+
+            return (
+                <div className="space-y-2">
+                    <button
+                        onClick={() => toggleSection(sectionKey)}
+                        className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                    >
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} ({value.length} items)
+                    </button>
+                    {isExpanded && (
+                        <div className="ml-6 space-y-4">
+                            {value.map((item, index) => (
+                                <div key={index}>
+                                    {index > 0 && <div className="pt-4" />}
+                                    <div className="pl-4">
+                                        {typeof item === 'object' && item !== null ? (
+                                            <div className="space-y-3">
+                                                {Object.entries(item).map(([subKey, subValue]) => (
+                                                    <div key={subKey}>
+                                                        {renderValue(subValue, subKey, depth + 1)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-900">{String(item)}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                      </div>
-                      <div>
-                        <p className="font-medium">{uploadedFile.name}</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
+                    )}
+                </div>
+            )
+        }
+
+        if (typeof value === 'object') {
+            const sectionKey = `${key}-${depth}`
+            const isExpanded = expandedSections.has(sectionKey)
+
+            return (
+                <div className="space-y-2">
+                    <button
+                        onClick={() => toggleSection(sectionKey)}
+                        className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                    >
+                        {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </button>
+                    {isExpanded && (
+                        <div className="ml-6 space-y-3">
+                            {Object.entries(value).map(([subKey, subValue]) => (
+                                <div key={subKey} className="border-l-2 border-gray-200 pl-4">
+                                    {renderValue(subValue, subKey, depth + 1)}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )
+        }
+
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">
+                    {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
+                </span>
+                <span>{String(value)}</span>
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-4">
+            <h4 className="font-semibold text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                {title}
+            </h4>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                {Object.entries(data).map(([key, value]) => (
+                    <div key={key}>
+                        {renderValue(value, key)}
                     </div>
-                    <Button variant="destructive" size="sm" onClick={() => setUploadedFile(null)}>
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {isAnalyzing && currentUploadFilename && (
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Processing: {currentUploadFilename}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Your lab report is being uploaded and analyzed. Please wait a moment...
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {newReportId && !isAnalyzing && (
-                <div className="flex flex-col items-center justify-center py-6 space-y-4">
-                  <div className="bg-green-100 rounded-full p-3">
-                    <Check className="h-6 w-6 text-green-600" />
-                  </div>
-                  <p className="text-center font-medium">{statusMessage}</p>
-                  <DialogClose asChild>
-                    <Button onClick={() => router.push(`/test-results/${newReportId}`)}>View Results</Button>
-                  </DialogClose>
-                </div>
-              )}
-
-              {!newReportId && !isAnalyzing && uploadedFile && (
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setUploadedFile(null)}>Cancel</Button>
-                  <Button onClick={handleAnalyze}>Analyze Report</Button>
-                </DialogFooter>
-              )}
+                ))}
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Tabs defaultValue="panels" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="panels">Test Panels</TabsTrigger>
-          <TabsTrigger value="reports">Lab Reports</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="panels">
-          <ScrollArea className="h-[calc(100vh-12rem)]">
-            <div className="space-y-4 pr-4">
-              {panels.map((panel) => (
-                <TestPanel
-                  key={panel.id}
-                  id={panel.id}
-                  name={panel.name}
-                  reported_at={panel.reported_at}
-                  lab_name={panel.lab_name}
-                  status={panel.status}
-                  test_results={panel.test_results}
-                  expanded={expandedPanels.has(panel.id)}
-                  onToggle={() => togglePanel(panel.id)}
-                  getStatusIndicator={getStatusIndicator}
-                  onShowTrend={handleShowTrend}
-                  onShowAIInterpretation={handleShowAIInterpretation}
-                />
-              ))}
-              {panels.length === 0 && !loading && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <FileText className="h-8 w-8 text-muted-foreground mb-4" />
-                  <h3 className="font-medium">No test panels found</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Upload a lab report to see your results and panels.</p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="reports">
-          <ScrollArea className="h-[calc(100vh-12rem)]">
-            <div className="space-y-4 pr-4">
-              {labReports.map((report) => (
-                <Card key={report.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg flex items-center">
-                          <FileText className="h-5 w-5 mr-2 text-primary" />
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <div className="font-medium truncate group-hover:underline">
-                                {report.original_filename}
-                                {report.id === newReportId && (
-                                  <Badge variant="outline" className="ml-2 bg-green-100 text-green-700 border-green-300">New</Badge>
-                                )}
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1 flex items-center">
-                              <Clock className="h-3 w-3 mr-1.5" />
-                              Uploaded on {new Date(report.created_at).toLocaleDateString()} • Status:
-                              <Badge variant={report.status === 'completed' || report.status === 'processed' ? 'default' : 'outline'} className="ml-1.5 text-xs">
-                                {report.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        </CardTitle>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => router.push(`/test-results/${report.id}`)}>
-                        View Report <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  {report.panels && report.panels.length > 0 && (
-                    <CardContent>
-                      <h4 className="text-sm font-medium mb-2">Panels in this report:</h4>
-                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                        {report.panels.slice(0, 5).map((panel, index) => (
-                          <li key={index}>{panel.name}{panel.lab_name ? ` (${panel.lab_name})` : ''}</li>
-                        ))}
-                        {report.panels.length > 5 && (
-                          <li className="text-xs">...and {report.panels.length - 5} more.</li>
-                        )}
-                      </ul>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-              {labReports.length === 0 && !loading && (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <FileText className="h-8 w-8 text-muted-foreground mb-4" />
-                  <h3 className="font-medium">No lab reports found</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Upload a lab report to see it listed here.</p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
-
-      <TrendDialog
-        open={showTrendDialog}
-        onOpenChange={setShowTrendDialog}
-        resultName={selectedResultName}
-        resultUnit={selectedResultUnit}
-        resultData={selectedResultData}
-      />
-      <AIInterpretationDialog
-        open={showAIDialog}
-        onOpenChange={setShowAIDialog}
-        resultName={selectedResultName}
-        interpretation={selectedResultInterpretation}
-      />
-    </div>
-  )
+        </div>
+    )
 }
+
+// Expandable File Row Component
+function FileRow({ report }: { report: LabReport }) {
+    const [isExpanded, setIsExpanded] = useState(false)
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case "uploading":
+                return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Uploading</Badge>
+            case "processing":
+                return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Processing</Badge>
+            case "completed":
+                return <Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge>
+            case "error":
+                return <Badge variant="destructive">Error</Badge>
+            default:
+                return <Badge variant="outline">{status}</Badge>
+        }
+    }
+
+    const getFileIcon = (fileName: string) => {
+        const ext = fileName.split('.').pop()?.toLowerCase()
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) {
+            return <FileImage className="h-4 w-4" />
+        }
+        if (['pdf', 'doc', 'docx'].includes(ext || '')) {
+            return <FileText className="h-4 w-4" />
+        }
+        return <FileSpreadsheet className="h-4 w-4" />
+    }
+
+    const getFileType = (fileName: string) => {
+        const ext = fileName.split('.').pop()?.toLowerCase()
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) {
+            return 'image'
+        }
+        if (['pdf'].includes(ext || '')) {
+            return 'pdf'
+        }
+        if (['doc', 'docx'].includes(ext || '')) {
+            return 'document'
+        }
+        return ext || 'unknown'
+    }
+
+    const formatDate = (timestamp: number) => {
+        return format(new Date(timestamp), "MMM dd, yyyy")
+    }
+
+    const tryParseJson = (transcription: string) => {
+        try {
+            let cleanedTranscription = transcription.trim()
+            if (cleanedTranscription.startsWith('```json')) {
+                cleanedTranscription = cleanedTranscription.replace(/^```json\s*/, '').replace(/```\s*$/, '')
+            } else if (cleanedTranscription.startsWith('```')) {
+                cleanedTranscription = cleanedTranscription.replace(/^```\s*/, '').replace(/```\s*$/, '')
+            }
+            return JSON.parse(cleanedTranscription)
+        } catch {
+            return null
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this lab report? This action cannot be undone.')) {
+            return
+        }
+        try {
+            await db.transact(db.tx.labReports[report.id].delete())
+        } catch (error) {
+            console.error('Delete error:', error)
+            alert('Failed to delete the lab report. Please try again.')
+        }
+    }
+
+    const handleView = () => {
+        if (report.file?.url) {
+            window.open(report.file.url, '_blank')
+        }
+    }
+
+    const handleDownload = () => {
+        if (report.file?.url) {
+            const link = document.createElement('a')
+            link.href = report.file.url
+            link.download = report.originalFileName
+            link.click()
+        }
+    }
+
+    return (
+        <>
+            <TableRow
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <TableCell className="w-8">
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </TableCell>
+                <TableCell className="font-medium">
+                    <div className="flex items-center space-x-2">
+                        {getFileIcon(report.originalFileName)}
+                        <span className="truncate">{report.originalFileName}</span>
+                    </div>
+                </TableCell>
+                <TableCell>
+                    <Badge variant="outline" className="capitalize">
+                        {getFileType(report.originalFileName)}
+                    </Badge>
+                </TableCell>
+                <TableCell>
+                    {getStatusBadge(report.status)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                    {formatDate(report.createdAt)}
+                </TableCell>
+                <TableCell className="text-right">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {report.file?.url && (
+                                <>
+                                    <DropdownMenuItem onClick={handleView}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleDownload}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                </>
+                            )}
+                            <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={handleDelete}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </TableCell>
+            </TableRow>
+            {isExpanded && (
+                <TableRow>
+                    <TableCell colSpan={6} className="p-0">
+                        <div className="border-t bg-muted/20 p-6 space-y-6">
+                            {report.status === "completed" && (
+                                <>
+                                    {report.aiSummary && (
+                                        <JsonViewer
+                                            data={tryParseJson(report.aiSummary)}
+                                            title="Detailed Lab Results"
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            {report.status === "error" && (
+                                <Alert variant="destructive">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        Failed to process this file. Please try uploading again.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
+                            {(report.status === "uploading" || report.status === "processing") && (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                    <span className="text-muted-foreground">
+                                        {report.status === "uploading" ? "Uploading file..." : "Processing with AI..."}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </TableCell>
+                </TableRow>
+            )}
+        </>
+    )
+}
+
+export default function TestResults2Page() {
+    // Use InstantDB auth instead of Clerk
+    const { isLoading: isAuthLoading, user, error: authError } = db.useAuth()
+    const [isUploading, setIsUploading] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    // Query lab reports for the current user
+    const {
+        isLoading: isLoadingReports,
+        error: reportsError,
+        data: reportsData,
+    } = db.useQuery(user ? {
+        labReports: {
+            $: {
+                where: { userId: user.id },
+                order: { createdAt: "desc" },
+            },
+            file: {}, // Include linked file data
+        },
+    } : null)
+
+    const labReports: LabReport[] = reportsData?.labReports || []
+
+    const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        if (!file || !user?.id) return
+
+        setIsUploading(true)
+        setUploadError(null)
+
+        try {
+            // Create a unique path for the file
+            const timestamp = Date.now()
+            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+            const filePath = `lab-reports/${user.id}/${timestamp}-${sanitizedFileName}`
+
+            // Upload file to InstantDB storage
+            const uploadResult = await db.storage.uploadFile(filePath, file, {
+                contentType: file.type,
+                contentDisposition: `attachment; filename="${file.name}"`,
+            })
+
+            // Create lab report record and link to file
+            const labReportId = id()
+            await db.transact([
+                db.tx.labReports[labReportId].update({
+                    userId: user.id,
+                    originalFileName: file.name,
+                    status: "uploading",
+                    createdAt: timestamp,
+                }),
+                db.tx.labReports[labReportId].link({ file: uploadResult.data.id }),
+            ])
+
+            // Update status to processing and trigger AI analysis
+            await db.transact(
+                db.tx.labReports[labReportId].update({
+                    status: "processing",
+                })
+            )
+
+            // Call the API to process the file (pass file path, server will get URL)
+            const response = await fetch('/api/processFile', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    labReportId,
+                    filePath,
+                    fileName: file.name,
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to process file')
+            }
+
+            // Clear the file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ''
+            }
+        } catch (error) {
+            console.error('Upload error:', error)
+            setUploadError(error instanceof Error ? error.message : 'Upload failed')
+        } finally {
+            setIsUploading(false)
+        }
+    }, [user?.id])
+
+    if (isAuthLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        )
+    }
+
+    if (authError) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <p>Error loading authentication: {authError.message}</p>
+            </div>
+        )
+    }
+
+    if (!user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <p>Please sign in to view your test results.</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Test Results</h1>
+                <p className="text-gray-600">Upload and analyze your lab reports with AI</p>
+            </div>
+
+            {/* Upload Section */}
+            <Card className="mb-8">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        Upload Lab Report
+                    </CardTitle>
+                    <CardDescription>
+                        Upload PDF, image, or document files of your lab results for AI analysis
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                onChange={handleFileSelect}
+                                disabled={isUploading}
+                                className="hidden"
+                                id="file-upload"
+                            />
+                            <label
+                                htmlFor="file-upload"
+                                className={`cursor-pointer ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <div className="flex flex-col items-center gap-2">
+                                    {isUploading ? (
+                                        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                                    ) : (
+                                        <Upload className="h-8 w-8 text-gray-400" />
+                                    )}
+                                    <p className="text-sm text-gray-600">
+                                        {isUploading ? 'Uploading...' : 'Click to upload or drag and drop'}
+                                    </p>
+                                    <p className="text-xs text-gray-400">
+                                        PDF, JPG, PNG, DOC up to 10MB
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        {uploadError && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>{uploadError}</AlertDescription>
+                            </Alert>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Reports Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <FileText className="h-5 w-5" />
+                        Your Lab Reports
+                    </CardTitle>
+                    <CardDescription>
+                        Click on any row to expand and view detailed analysis
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {isLoadingReports ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin" />
+                            <span className="ml-2">Loading reports...</span>
+                        </div>
+                    ) : reportsError ? (
+                        <div className="p-6">
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                    Error loading reports: {reportsError.message}
+                                </AlertDescription>
+                            </Alert>
+                        </div>
+                    ) : labReports.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                            <p className="text-lg font-medium">No lab reports uploaded yet</p>
+                            <p className="text-sm">Upload your first report to get started</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-8"></TableHead>
+                                        <TableHead className="w-[300px]">Name</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Modified</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {labReports.map((report) => (
+                                        <FileRow key={report.id} report={report} />
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    )
+} 
