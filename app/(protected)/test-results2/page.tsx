@@ -4,12 +4,39 @@ import { useState, useCallback, useRef } from "react"
 import { id, InstaQLEntity } from "@instantdb/react"
 import { db, schema } from "@/db/instant"
 import { format } from "date-fns"
-import { Upload, FileText, Loader2, CheckCircle, AlertCircle, Eye, Download } from "lucide-react"
+import {
+    Upload,
+    FileText,
+    Loader2,
+    CheckCircle,
+    AlertCircle,
+    Eye,
+    Download,
+    ChevronDown,
+    ChevronRight,
+    FileImage,
+    FileSpreadsheet,
+    Calendar,
+    User,
+    Activity,
+    TrendingUp,
+    AlertTriangle,
+    Trash2,
+    MoreHorizontal
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Separator } from "@/components/ui/separator"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // Type for lab reports with InstantDB fields
 export type LabReport = InstaQLEntity<typeof schema, "labReports"> & {
@@ -17,6 +44,494 @@ export type LabReport = InstaQLEntity<typeof schema, "labReports"> & {
     $updatedAt?: number;
     file?: InstaQLEntity<typeof schema, "$files">;
 };
+
+// JSON Viewer Component for structured transcription data
+function JsonViewer({ data, title }: { data: any; title: string }) {
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
+
+    const toggleSection = (key: string) => {
+        const newExpanded = new Set(expandedSections)
+        if (newExpanded.has(key)) {
+            newExpanded.delete(key)
+        } else {
+            newExpanded.add(key)
+        }
+        setExpandedSections(newExpanded)
+    }
+
+    const renderValue = (value: any, key: string, depth: number = 0): React.ReactNode => {
+        if (value === null || value === undefined) {
+            return <span className="text-muted-foreground italic">null</span>
+        }
+
+        if (typeof value === 'boolean') {
+            return <span className="text-blue-600">{value.toString()}</span>
+        }
+
+        if (typeof value === 'number') {
+            return <span className="text-green-600">{value}</span>
+        }
+
+        if (typeof value === 'string') {
+            return <span className="text-gray-900">{value}</span>
+        }
+
+        if (Array.isArray(value)) {
+            const sectionKey = `${key}-${depth}`
+            const isExpanded = expandedSections.has(sectionKey)
+
+            return (
+                <div className="space-y-2">
+                    <div>
+                        <button
+                            onClick={() => toggleSection(sectionKey)}
+                            className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            Array ({value.length} items)
+                        </button>
+                        {isExpanded && (
+                            <div className="ml-6 space-y-2">
+                                {value.map((item, index) => (
+                                    <div key={index} className="border-l-2 border-gray-200 pl-4">
+                                        <div className="text-xs text-muted-foreground mb-1">Item {index + 1}</div>
+                                        {renderValue(item, `${key}-${index}`, depth + 1)}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )
+        }
+
+        if (typeof value === 'object') {
+            const sectionKey = `${key}-${depth}`
+            const isExpanded = expandedSections.has(sectionKey)
+
+            return (
+                <div className="space-y-2">
+                    <div>
+                        <button
+                            onClick={() => toggleSection(sectionKey)}
+                            className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </button>
+                        {isExpanded && (
+                            <div className="ml-6 space-y-3">
+                                {Object.entries(value).map(([subKey, subValue]) => (
+                                    <div key={subKey} className="border-l-2 border-gray-200 pl-4">
+                                        <div className="text-sm font-medium text-gray-700 mb-1">
+                                            {subKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                        </div>
+                                        {renderValue(subValue, `${key}-${subKey}`, depth + 1)}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )
+        }
+
+        return <span>{String(value)}</span>
+    }
+
+    return (
+        <div className="space-y-4">
+            <h4 className="font-semibold text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                {title}
+            </h4>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                {Object.entries(data).map(([key, value]) => (
+                    <div key={key}>
+                        {renderValue(value, key)}
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+// Medical Summary Component for structured summary data
+function MedicalSummary({ summary }: { summary: any }) {
+    if (typeof summary === 'string') {
+        return (
+            <div className="space-y-4">
+                <h4 className="font-semibold text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Summary
+                </h4>
+                <div className="bg-blue-50 rounded-lg p-4">
+                    <p className="text-gray-700">{summary}</p>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-6">
+            <h4 className="font-semibold text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Medical Analysis Summary
+            </h4>
+
+            {/* Patient Demographics */}
+            {summary.patient_demographics && (
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Patient Information
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {Object.entries(summary.patient_demographics).map(([key, value]) => (
+                            <div key={key} className="flex justify-between">
+                                <span className="text-sm font-medium text-gray-600 capitalize">
+                                    {key.replace(/_/g, ' ')}:
+                                </span>
+                                <span className="text-sm text-gray-900">{String(value)}</span>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Test Date Info */}
+            {summary.test_date && (
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Test Information
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        {Object.entries(summary.test_date).map(([key, value]) => (
+                            <div key={key} className="flex justify-between">
+                                <span className="text-sm font-medium text-gray-600 capitalize">
+                                    {key.replace(/_/g, ' ')}:
+                                </span>
+                                <span className="text-sm text-gray-900">{String(value)}</span>
+                            </div>
+                        ))}
+                        {summary.ordering_physician && (
+                            <div className="flex justify-between">
+                                <span className="text-sm font-medium text-gray-600">Ordering Physician:</span>
+                                <span className="text-sm text-gray-900">{summary.ordering_physician}</span>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Key Abnormal Findings */}
+            {summary.key_abnormal_findings && Array.isArray(summary.key_abnormal_findings) && summary.key_abnormal_findings.length > 0 && (
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-orange-500" />
+                            Key Abnormal Findings
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {summary.key_abnormal_findings.map((finding: any, index: number) => (
+                            <div key={index} className="border-l-4 border-orange-500 pl-4 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <h5 className="font-medium text-gray-900">{finding.test}</h5>
+                                    <Badge variant="destructive">{finding.flag}</Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-gray-600">Value: </span>
+                                        <span className="font-medium">{finding.value} {finding.units}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600">Reference: </span>
+                                        <span>{finding.reference_range}</span>
+                                    </div>
+                                </div>
+                                {finding.clinical_significance && (
+                                    <p className="text-sm text-gray-700 bg-orange-50 p-2 rounded">
+                                        {finding.clinical_significance}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Overall Assessment */}
+            {summary.overall_health_assessment && (
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4" />
+                            Overall Health Assessment
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-gray-700">{summary.overall_health_assessment}</p>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Recommended Follow-up */}
+            {summary.recommended_follow_up_actions && Array.isArray(summary.recommended_follow_up_actions) && (
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Activity className="h-4 w-4" />
+                            Recommended Follow-up Actions
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ul className="space-y-2">
+                            {summary.recommended_follow_up_actions.map((action: string, index: number) => (
+                                <li key={index} className="text-sm text-gray-700 flex items-start gap-2">
+                                    <span className="text-blue-500 mt-1">•</span>
+                                    {action}
+                                </li>
+                            ))}
+                        </ul>
+                    </CardContent>
+                </Card>
+            )}
+        </div>
+    )
+}
+
+// Expandable File Row Component
+function FileRow({ report }: { report: LabReport }) {
+    const [isExpanded, setIsExpanded] = useState(false)
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case "uploading":
+                return <Badge variant="secondary" className="bg-blue-100 text-blue-800">Uploading</Badge>
+            case "processing":
+                return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Processing</Badge>
+            case "completed":
+                return <Badge variant="secondary" className="bg-green-100 text-green-800">Completed</Badge>
+            case "error":
+                return <Badge variant="destructive">Error</Badge>
+            default:
+                return <Badge variant="outline">{status}</Badge>
+        }
+    }
+
+    const getFileIcon = (fileName: string) => {
+        const ext = fileName.split('.').pop()?.toLowerCase()
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) {
+            return <FileImage className="h-4 w-4" />
+        }
+        if (['pdf', 'doc', 'docx'].includes(ext || '')) {
+            return <FileText className="h-4 w-4" />
+        }
+        return <FileSpreadsheet className="h-4 w-4" />
+    }
+
+    const getFileType = (fileName: string) => {
+        const ext = fileName.split('.').pop()?.toLowerCase()
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) {
+            return 'image'
+        }
+        if (['pdf'].includes(ext || '')) {
+            return 'pdf'
+        }
+        if (['doc', 'docx'].includes(ext || '')) {
+            return 'document'
+        }
+        return ext || 'unknown'
+    }
+
+    const formatDate = (timestamp: number) => {
+        return format(new Date(timestamp), "MMM dd, yyyy")
+    }
+
+    const parseTranscription = (transcription: string) => {
+        try {
+            let cleanedTranscription = transcription.trim()
+            if (cleanedTranscription.startsWith('```json')) {
+                cleanedTranscription = cleanedTranscription.replace(/^```json\s*/, '').replace(/```\s*$/, '')
+            } else if (cleanedTranscription.startsWith('```')) {
+                cleanedTranscription = cleanedTranscription.replace(/^```\s*/, '').replace(/```\s*$/, '')
+            }
+            return JSON.parse(cleanedTranscription)
+        } catch {
+            return null
+        }
+    }
+
+    const parseSummary = (summary: string) => {
+        try {
+            let cleanedSummary = summary.trim()
+            if (cleanedSummary.startsWith('```json')) {
+                cleanedSummary = cleanedSummary.replace(/^```json\s*/, '').replace(/```\s*$/, '')
+            } else if (cleanedSummary.startsWith('```')) {
+                cleanedSummary = cleanedSummary.replace(/^```\s*/, '').replace(/```\s*$/, '')
+            }
+            return JSON.parse(cleanedSummary)
+        } catch {
+            return summary
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this lab report? This action cannot be undone.')) {
+            return
+        }
+        try {
+            await db.transact(db.tx.labReports[report.id].delete())
+        } catch (error) {
+            console.error('Delete error:', error)
+            alert('Failed to delete the lab report. Please try again.')
+        }
+    }
+
+    const handleView = () => {
+        if (report.file?.url) {
+            window.open(report.file.url, '_blank')
+        }
+    }
+
+    const handleDownload = () => {
+        if (report.file?.url) {
+            const link = document.createElement('a')
+            link.href = report.file.url
+            link.download = report.originalFileName
+            link.click()
+        }
+    }
+
+    return (
+        <>
+            <TableRow
+                className="cursor-pointer hover:bg-muted/50"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                <TableCell className="w-8">
+                    {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </TableCell>
+                <TableCell className="font-medium">
+                    <div className="flex items-center space-x-2">
+                        {getFileIcon(report.originalFileName)}
+                        <span className="truncate">{report.originalFileName}</span>
+                    </div>
+                </TableCell>
+                <TableCell>
+                    <Badge variant="outline" className="capitalize">
+                        {getFileType(report.originalFileName)}
+                    </Badge>
+                </TableCell>
+                <TableCell>
+                    {getStatusBadge(report.status)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                    {formatDate(report.createdAt)}
+                </TableCell>
+                <TableCell className="text-right">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {report.file?.url && (
+                                <>
+                                    <DropdownMenuItem onClick={handleView}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleDownload}>
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                </>
+                            )}
+                            <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={handleDelete}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </TableCell>
+            </TableRow>
+            {isExpanded && (
+                <TableRow>
+                    <TableCell colSpan={6} className="p-0">
+                        <div className="border-t bg-muted/20 p-6 space-y-6">
+                            {report.status === "completed" && (
+                                <>
+                                    {report.aiSummary && (
+                                        <MedicalSummary summary={parseSummary(report.aiSummary)} />
+                                    )}
+
+                                    {report.aiTranscription && (
+                                        <>
+                                            <Separator />
+                                            {parseTranscription(report.aiTranscription) ? (
+                                                <JsonViewer
+                                                    data={parseTranscription(report.aiTranscription)}
+                                                    title="Detailed Lab Results"
+                                                />
+                                            ) : (
+                                                <div className="space-y-4">
+                                                    <h4 className="font-semibold text-lg flex items-center gap-2">
+                                                        <FileText className="h-5 w-5" />
+                                                        Transcription
+                                                    </h4>
+                                                    <div className="bg-gray-50 rounded-lg p-4">
+                                                        <p className="text-gray-700 whitespace-pre-wrap">
+                                                            {report.aiTranscription}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )}
+
+                            {report.status === "error" && (
+                                <Alert variant="destructive">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>
+                                        Failed to process this file. Please try uploading again.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+
+                            {(report.status === "uploading" || report.status === "processing") && (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                    <span className="text-muted-foreground">
+                                        {report.status === "uploading" ? "Uploading file..." : "Processing with AI..."}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </TableCell>
+                </TableRow>
+            )}
+        </>
+    )
+}
 
 export default function TestResults2Page() {
     // Use InstantDB auth instead of Clerk
@@ -109,40 +624,6 @@ export default function TestResults2Page() {
         }
     }, [user?.id])
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case "uploading":
-                return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-            case "processing":
-                return <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />
-            case "completed":
-                return <CheckCircle className="h-4 w-4 text-green-500" />
-            case "error":
-                return <AlertCircle className="h-4 w-4 text-red-500" />
-            default:
-                return <FileText className="h-4 w-4 text-gray-500" />
-        }
-    }
-
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case "uploading":
-                return "bg-blue-100 text-blue-800"
-            case "processing":
-                return "bg-yellow-100 text-yellow-800"
-            case "completed":
-                return "bg-green-100 text-green-800"
-            case "error":
-                return "bg-red-100 text-red-800"
-            default:
-                return "bg-gray-100 text-gray-800"
-        }
-    }
-
-    const formatDate = (timestamp: number) => {
-        return format(new Date(timestamp), "MMM dd, yyyy 'at' h:mm a")
-    }
-
     if (isAuthLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
@@ -168,7 +649,7 @@ export default function TestResults2Page() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Test Results</h1>
                 <p className="text-gray-600">Upload and analyze your lab reports with AI</p>
@@ -227,7 +708,7 @@ export default function TestResults2Page() {
                 </CardContent>
             </Card>
 
-            {/* Reports List */}
+            {/* Reports Table */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -235,118 +716,50 @@ export default function TestResults2Page() {
                         Your Lab Reports
                     </CardTitle>
                     <CardDescription>
-                        View and manage your uploaded lab reports
+                        Click on any row to expand and view detailed analysis
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     {isLoadingReports ? (
                         <div className="flex items-center justify-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin" />
                             <span className="ml-2">Loading reports...</span>
                         </div>
                     ) : reportsError ? (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>
-                                Error loading reports: {reportsError.message}
-                            </AlertDescription>
-                        </Alert>
+                        <div className="p-6">
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                    Error loading reports: {reportsError.message}
+                                </AlertDescription>
+                            </Alert>
+                        </div>
                     ) : labReports.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
+                        <div className="text-center py-12 text-gray-500">
                             <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                            <p>No lab reports uploaded yet</p>
+                            <p className="text-lg font-medium">No lab reports uploaded yet</p>
                             <p className="text-sm">Upload your first report to get started</p>
                         </div>
                     ) : (
-                        <ScrollArea className="h-[600px]">
-                            <div className="space-y-4">
-                                {labReports.map((report) => (
-                                    <div
-                                        key={report.id}
-                                        className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <div className="flex items-start justify-between">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    {getStatusIcon(report.status)}
-                                                    <h3 className="font-medium text-gray-900">
-                                                        {report.originalFileName}
-                                                    </h3>
-                                                    <Badge className={getStatusColor(report.status)}>
-                                                        {report.status}
-                                                    </Badge>
-                                                </div>
-
-                                                <p className="text-sm text-gray-500 mb-3">
-                                                    Uploaded {formatDate(report.createdAt)}
-                                                </p>
-
-                                                {report.status === "completed" && (
-                                                    <div className="space-y-3">
-                                                        {report.aiSummary && (
-                                                            <div>
-                                                                <h4 className="font-medium text-sm text-gray-700 mb-1">
-                                                                    AI Summary
-                                                                </h4>
-                                                                <p className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                                                                    {report.aiSummary}
-                                                                </p>
-                                                            </div>
-                                                        )}
-
-                                                        {report.aiTranscription && (
-                                                            <div>
-                                                                <h4 className="font-medium text-sm text-gray-700 mb-1">
-                                                                    Transcription
-                                                                </h4>
-                                                                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded max-h-32 overflow-y-auto">
-                                                                    {report.aiTranscription}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {report.status === "error" && (
-                                                    <Alert variant="destructive" className="mt-2">
-                                                        <AlertCircle className="h-4 w-4" />
-                                                        <AlertDescription>
-                                                            Failed to process this file. Please try uploading again.
-                                                        </AlertDescription>
-                                                    </Alert>
-                                                )}
-                                            </div>
-
-                                            <div className="flex gap-2 ml-4">
-                                                {report.file?.url && (
-                                                    <>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => window.open(report.file?.url, '_blank')}
-                                                        >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                const link = document.createElement('a')
-                                                                link.href = report.file?.url || ''
-                                                                link.download = report.originalFileName
-                                                                link.click()
-                                                            }}
-                                                        >
-                                                            <Download className="h-4 w-4" />
-                                                        </Button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
+                        <div className="overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-8"></TableHead>
+                                        <TableHead className="w-[300px]">Name</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Modified</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {labReports.map((report) => (
+                                        <FileRow key={report.id} report={report} />
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>
