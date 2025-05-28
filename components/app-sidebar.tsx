@@ -59,7 +59,6 @@ const primaryNavConfig: NavItemGroup[] = [
   {
     groupTitle: "Records",
     items: [
-      // { name: "Lab Upload", href: "/lab-upload", icon: FileText },
       { name: "Test Results", href: "/test-results", icon: FileText },
       { name: "Medications", href: "/medications", icon: Pill },
       { name: "Appointments", href: "/visits", icon: Calendar },
