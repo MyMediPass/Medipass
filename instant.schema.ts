@@ -68,6 +68,20 @@ const _schema = i.schema({
       createdAt: i.number().optional(),
       updatedAt: i.number().optional(),
     }),
+    labReports: i.entity({
+      userId: i.string().indexed(),
+      originalFileName: i.string(),
+      status: i.string().indexed(), // "uploading", "processing", "completed", "error"
+      aiSummary: i.string().optional(),
+      aiTranscription: i.string().optional(),
+      createdAt: i.number().indexed(),
+    }),
+  },
+  links: {
+    labReportFile: {
+      forward: { on: 'labReports', has: 'one', label: 'file' },
+      reverse: { on: '$files', has: 'one', label: 'labReport' },
+    },
   },
   rooms: {},
 });
